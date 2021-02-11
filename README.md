@@ -27,21 +27,3 @@ Non-goals:
 - Full less-like curses-based TUI for browsing around in a log file, though
   that would be fun.
 
-
-# Design Notes
-
-- Passes through unrecognized format through unchanged. Where "unrecognized"
-  is "doesn't satisfy 'required' fields in spec.json".
-- `--strict` option to elide unrecognized lines.
-- formats:
-    - ecs: the native format that is ndjson
-    - <default> (TODO: name) for safe and future-proof default format
-      to be defined, but leaning towards pino-pretty-like (TODO: design).
-      *Perhaps* has built-in layout for ecs-logging/spec/spec.json-defined
-      fields (like `error.*` and `log.*`)
-    - <???>: a format that tries a bit harder to be pretty for some things
-      like http req/res beyond the <default>. Perhaps just those? If so
-      then could call this "http" format.
-    - "short" or something like that for oneline or reduced output
-      Perhaps always include an ellipsis if info is being elided?
-

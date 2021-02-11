@@ -53,55 +53,107 @@ func isEcsRecord(rec *fastjson.Value) bool {
 	return true
 }
 
-func render(logger *zap.Logger, rec *fastjson.Value) {
-	// Format: Start with bunyan-like:
-	// [2021-02-09T05:34:41.642Z]  WARN: myserver/79835 on purple.local: operation went boom: TypeError: boom
-	//     TypeError: boom
-	//     ...
-	// or pino-like (slight diffs):
-	// [1612850649009] INFO (myname/83535 on purple.local): Hello world
-	// [1612850649010] WARN (myname/83535 on purple.local): From child
-	//     module: "foo"
-	// [1612850649010] ERROR (myname/83535 on purple.local): oops
-	//     module: "foo"
-	//     err: {
-	//       "type": "Error",
-	//       "message": "boom",
-	//       "stack":
-	//           Error: boom
-	//               at Object.<anonymous> (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/foo.js:8:19)
-	//               ...
+// dottedGetBytes looks up key "$aStr.$bStr" in the given record and removes
+// those entries from the record.
+func dottedGetBytes(rec *fastjson.Value, aStr, bStr string) []byte {
+	var abBytes []byte
 
-	ecs := rec.GetObject("ecs")
-	if ecs == nil {
-		rec.Del("ecs.version")
-	} else {
-		ecs.Del("version")
-		if ecs.Len() == 0 {
-			rec.Del("ecs")
+	// Try `{"a": {"b": <value>}}`.
+	aObj := rec.GetObject(aStr)
+	if aObj != nil {
+		abVal := aObj.Get(bStr)
+		if abVal != nil {
+			abBytes = abVal.GetStringBytes()
+			aObj.Del(bStr)
+			if aObj.Len() == 0 {
+				rec.Del(aStr)
+			}
 		}
-		// TODO: test that ecs.foo=bar still prints
 	}
 
-	logLevel := rec.GetStringBytes("log.level")
-	if logLevel != nil {
-		rec.Del("log.level")
-	} else {
-		logObj := rec.Get("log")
-		logLevel = logObj.GetStringBytes("level")
-		logObj.Del("level")
+	// Try `{"a.b": <value>}`.
+	if abBytes == nil {
+		abStr := aStr + "." + bStr
+		abBytes = rec.GetStringBytes(abStr)
+		if abBytes != nil {
+			rec.Del(abStr)
+		}
 	}
-	// XXX: perf: strings.Builder
-	// XXX add ($name/$pid on $hostname) a la pino
-	// XXX rendering of remaining fields
-	// XXX what is pino doing with err.stack? Is that general multiline string?
-	fmt.Printf("[%s] %5s: %s\n",
-		rec.GetStringBytes("@timestamp"),
-		strings.ToUpper(string(logLevel)),
-		rec.GetStringBytes("message"))
+
+	return abBytes
+}
+
+func render(logger *zap.Logger, rec *fastjson.Value) {
+	// TODO perf: strings.Builder re-use between runs of `render()`?
+	var b strings.Builder
+
+	// Drop "ecs.version". No point in rendering it.
+	dottedGetBytes(rec, "ecs", "version")
+	logLevel := dottedGetBytes(rec, "log", "level")
+	logLogger := dottedGetBytes(rec, "log", "logger")
+	serviceName := dottedGetBytes(rec, "service", "name")
+	hostHostname := dottedGetBytes(rec, "host", "hostname")
+
+	// Title line pattern:
+	//
+	//    [@timestamp] LEVEL (log.logger/service.name on host.hostname): message
+	//
+	// - TODO: re-work this title line pattern, the parens section is weak
+	//   - bunyan will always have $log.logger
+	//   - bunyan and pino will typically have $process.pid
+	//   - What about other languages?
+	//   - $service.name will typically only be there with automatic injection
+	//   typical bunyan:  [@timestamp] LEVEL (name/pid on host): message
+	//   typical pino:    [@timestamp] LEVEL (pid on host): message
+	//   typical winston: [@timestamp] LEVEL: message
+	b.WriteByte('[')
+	b.Write(rec.GetStringBytes(("@timestamp")))
 	rec.Del("@timestamp")
+	b.WriteString("] ")
+	fmt.Fprintf(&b, "%5s", strings.ToUpper(string(logLevel)))
+	if logLogger != nil || serviceName != nil || hostHostname != nil {
+		b.WriteString(" (")
+		alreadyWroteSome := false
+		if logLogger != nil {
+			b.Write(logLogger)
+			alreadyWroteSome = true
+		}
+		if serviceName != nil {
+			if alreadyWroteSome {
+				b.WriteByte('/')
+			}
+			b.Write(serviceName)
+			alreadyWroteSome = true
+		}
+		if hostHostname != nil {
+			if alreadyWroteSome {
+				b.WriteByte(' ')
+			}
+			b.WriteString("on ")
+			b.Write(hostHostname)
+		}
+		b.WriteByte(')')
+	}
+	b.WriteString(": ")
+	b.Write(rec.GetStringBytes("message"))
 	rec.Del("message")
-	fmt.Printf("    %s\n", rec.String())
+
+	// Render the remaining fields:
+	//    $key: <render $value as indented JSON-ish>
+	// where "JSON-ish" is:
+	// - 4-space indentation (note: pino uses 2)
+	// - special casing for "error.stack"
+	// - special case other multi-line string values?
+	obj := rec.GetObject()
+	obj.Visit(func(k []byte, v *fastjson.Value)
+		b.WriteString("\n    ")
+		b.Write(k)
+		b.WriteString(": ")
+		// TODO: do recursive indented JSON-ish rendering
+		b.WriteString(v.String())
+	})
+
+	fmt.Println(b.String())
 }
 
 func main() {
@@ -141,7 +193,7 @@ func main() {
 	var p fastjson.Parser
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		// XXX perf: use scanner.Bytes https://golang.org/pkg/bufio/#Scanner.Bytes
+		// TODO perf: use scanner.Bytes https://golang.org/pkg/bufio/#Scanner.Bytes
 		line := scanner.Text()
 		if len(line) > maxLineLen || len(line) == 0 || line[0] != '{' {
 			fmt.Println(line)

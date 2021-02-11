@@ -6,3 +6,7 @@ all:
 .PHONY: run
 run:
 	go run cmd/ecslog/main.go
+
+.PHONY: tidy
+tidy:
+	go mod tidy
