@@ -145,7 +145,7 @@ func render(logger *zap.Logger, rec *fastjson.Value) {
 	// - special casing for "error.stack"
 	// - special case other multi-line string values?
 	obj := rec.GetObject()
-	obj.Visit(func(k []byte, v *fastjson.Value)
+	obj.Visit(func(k []byte, v *fastjson.Value) {
 		b.WriteString("\n    ")
 		b.Write(k)
 		b.WriteString(": ")
