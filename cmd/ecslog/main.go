@@ -1,5 +1,8 @@
 package main
 
+// An `ecslog` CLI for pretty-printing logs (streaming on stdin, or in log
+// files) in ECS logging format (https://github.com/elastic/ecs-logging).
+
 import (
 	"bufio"
 	"bytes"
@@ -14,6 +17,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/trentm/go-ecslog/internal/ansipainter"
+	"github.com/trentm/go-ecslog/internal/ecslog"
 )
 
 const maxLineLen = 8192
@@ -36,83 +40,13 @@ func usage() {
 	flags.PrintDefaults()
 }
 
-// IsECSLoggingRecord returns true iff the given `rec` has the required
-// ecs-logging fields.
-//
-// It also *mutates* the given `st` runtime state and `rec` record: populating
-// `st` with the extracted core fields, while deleting those fields from `rec`.
-// This is for performance, to avoid having to lookup those fields twice.
-//
-// XXX make this public in internal/ecs
-func IsECSLoggingRecord(st *state, rec *fastjson.Value) bool {
-	timestamp := rec.GetStringBytes("@timestamp")
-	if timestamp == nil {
-		return false
-	} else {
-		st.timestamp = timestamp
-		rec.Del("@timestamp")
-	}
-
-	message := rec.GetStringBytes("message")
-	if message == nil {
-		return false
-	} else {
-		st.message = message
-		rec.Del("message")
-	}
-
-	ecsVersion := dottedGetBytes(rec, "ecs", "version")
-	if ecsVersion == nil {
-		return false
-	}
-
-	logLevel := dottedGetBytes(rec, "log", "level")
-	if logLevel == nil {
-		return false
-	} else {
-		st.logLevel = string(logLevel)
-	}
-
-	return true
-}
-
-// dottedGetBytes looks up key "$aStr.$bStr" in the given record and removes
-// those entries from the record.
-func dottedGetBytes(rec *fastjson.Value, aStr, bStr string) []byte {
-	var abBytes []byte
-
-	// Try `{"a": {"b": <value>}}`.
-	aObj := rec.GetObject(aStr)
-	if aObj != nil {
-		abVal := aObj.Get(bStr)
-		if abVal != nil {
-			abBytes = abVal.GetStringBytes()
-			aObj.Del(bStr)
-			if aObj.Len() == 0 {
-				rec.Del(aStr)
-			}
-		}
-	}
-
-	// Try `{"a.b": <value>}`.
-	if abBytes == nil {
-		abStr := aStr + "." + bStr
-		abBytes = rec.GetStringBytes(abStr)
-		if abBytes != nil {
-			rec.Del(abStr)
-		}
-	}
-
-	return abBytes
-}
-
-func render(st *state, rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
+func render(st *ecslog.State, rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
 	// TODO perf: strings.Builder re-use between runs of `render()`?
 	var b strings.Builder
 
-	logLogger := dottedGetBytes(rec, "log", "logger")
-	serviceName := dottedGetBytes(rec, "service", "name")
-	hostHostname := dottedGetBytes(rec, "host", "hostname")
+	logLogger := ecslog.DottedGetBytes(rec, "log", "logger")
+	serviceName := ecslog.DottedGetBytes(rec, "service", "name")
+	hostHostname := ecslog.DottedGetBytes(rec, "host", "hostname")
 
 	// Title line pattern:
 	//
@@ -127,10 +61,10 @@ func render(st *state, rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
 	//   typical pino:    [@timestamp] LEVEL (pid on host): message
 	//   typical winston: [@timestamp] LEVEL: message
 	b.WriteByte('[')
-	b.Write(st.timestamp)
+	b.Write(st.Timestamp)
 	b.WriteString("] ")
-	painter.Paint(&b, st.logLevel)
-	fmt.Fprintf(&b, "%5s", strings.ToUpper(st.logLevel))
+	painter.Paint(&b, st.LogLevel)
+	fmt.Fprintf(&b, "%5s", strings.ToUpper(st.LogLevel))
 	painter.Reset(&b)
 	if logLogger != nil || serviceName != nil || hostHostname != nil {
 		b.WriteString(" (")
@@ -157,7 +91,7 @@ func render(st *state, rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
 	}
 	b.WriteString(": ")
 	painter.Paint(&b, "message")
-	b.Write(st.message)
+	b.Write(st.Message)
 	painter.Reset(&b)
 
 	// Render the remaining fields:
@@ -241,42 +175,6 @@ func renderJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 	}
 }
 
-// ECSLevelLess returns true iff level1 is less than level2.
-//
-// Because ECS doesn't mandate a set of log level names for the "log.level"
-// field, nor any specific ordering of those log levels, this is a best
-// effort based on names and ordering from common logging frameworks.
-// If a level name is unknown, this returns false. Level names are considered
-// case-insensitive.
-func ECSLevelLess(level1, level2 string) bool {
-	val1, ok := levelValFromName[strings.ToLower(level1)]
-	if !ok {
-		return false
-	}
-	val2, ok := levelValFromName[strings.ToLower(level2)]
-	if !ok {
-		return false
-	}
-	return val1 < val2
-}
-
-var levelValFromName = map[string]int{
-	"trace":   10,
-	"debug":   20,
-	"info":    30,
-	"warn":    40,
-	"warning": 40,
-	"error":   50,
-	"fatal":   60,
-}
-
-type state struct {
-	lg        *zap.Logger
-	logLevel  string
-	timestamp []byte
-	message   []byte
-}
-
 func main() {
 	flags.SortFlags = false
 	flags.Usage = usage
@@ -296,7 +194,8 @@ func main() {
 		logLevel = zap.DebugLevel
 	}
 	core := ecszap.NewCore(encoderConfig, os.Stdout, logLevel)
-	lg := zap.New(core, zap.AddCaller()).Named("ecslog")
+	logger := zap.New(core, zap.AddCaller()).Named("ecslog")
+	st := ecslog.NewState(logger)
 
 	// Parse args.
 	if len(flags.Args()) != 1 {
@@ -305,14 +204,13 @@ func main() {
 		os.Exit(2)
 	}
 	logFile := flags.Arg(0)
-	lg.Debug("logFile", zap.String("logFile", logFile))
+	st.Log.Debug("logFile", zap.String("logFile", logFile))
 
 	f, err := os.Open(logFile)
 	if err != nil {
 		error(err.Error())
 		os.Exit(1)
 	}
-	st := &state{lg: lg}
 	var p fastjson.Parser
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -326,17 +224,18 @@ func main() {
 
 		rec, err := p.Parse(line)
 		if err != nil {
-			lg.Debug("line parse error", zap.Error(err))
+			st.Log.Debug("line parse error", zap.Error(err))
 			fmt.Println(line)
 			continue
 		}
 
-		if !IsECSLoggingRecord(st, rec) {
+		if !ecslog.IsECSLoggingRecord(st, rec) {
 			fmt.Println(line)
 			continue
 		}
 
-		if *flagLevel != "" && ECSLevelLess(st.logLevel, *flagLevel) {
+		// `--level info` will drop an log records less than log.level=info.
+		if *flagLevel != "" && ecslog.ECSLevelLess(st.LogLevel, *flagLevel) {
 			continue
 		}
 

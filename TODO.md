@@ -1,6 +1,7 @@
 # top
 
 - refactor render() and support multiple formats
+- finish color handling: options, envvars, isatty
 - input args cases:
   - stdin
   - one file
@@ -41,9 +42,14 @@
 # later
 
 - revisit -v,--verbose and own internal logging in ecs-logging format. It isn't
-  very useful... because passing its stderr through ecslog again is awkward
+  very useful... because passing its stderr through ecslog again is awkward.
+  Perhaps revisit this along with bug reporting. When is trace/debug logging
+  from ecslog itself helpful? Compare to bunyan's `BUNYAN_SELF_TRACE` envvar only.
+- --version flag
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with
+- Long-form online help. From --help vs -h? or general man page? What's typical or
+  nice in go-land.
 - formats:
     - ecs: the native format that is ndjson
     - <default> (TODO: name) for safe and future-proof default format
@@ -73,6 +79,9 @@
 - distribute builds? GH releases?
 - filtering: is there a golang impl/parser for EQL? Would be nice to mirror
   what you'd get in Kibana logs app.
+    - or KQL? https://www.elastic.co/guide/en/kibana/master/kuery-query.html
+    - EQL: https://www.elastic.co/guide/en/elasticsearch/reference/current/eql.html
+    - or?...
 - bunyan style handling of multiple input files and chrono ordering
   of records
 - perhaps use https://github.com/elastic/makelogs for testing input?

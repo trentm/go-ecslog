@@ -1,6 +1,9 @@
 
 .PHONY: all
-all:
+all: ecslog
+
+# Limitation: this doesn't catch all deps
+ecslog: cmd/ecslog/*.go
 	go build ./cmd/ecslog
 
 .PHONY: run
