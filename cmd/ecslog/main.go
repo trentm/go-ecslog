@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -153,13 +154,67 @@ func render(rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
 	obj := rec.GetObject()
 	obj.Visit(func(k []byte, v *fastjson.Value) {
 		b.WriteString("\n    ")
+		painter.Paint(&b, "extraField")
 		b.Write(k)
+		painter.Reset(&b)
 		b.WriteString(": ")
+		// TODO: perhaps use this in compact format: b.WriteString(v.String())
 		// TODO: do recursive indented JSON-ish rendering
-		b.WriteString(v.String())
+		renderJSONValue(&b, v, "    ", "    ", painter)
 	})
 
 	fmt.Println(b.String())
+}
+
+func renderJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent string, painter *ansipainter.ANSIPainter) {
+	switch v.Type() {
+	case fastjson.TypeObject:
+		b.WriteString("{\n")
+		obj := v.GetObject()
+		obj.Visit(func(subk []byte, subv *fastjson.Value) {
+			b.WriteString(currIndent)
+			b.WriteString(indent)
+			painter.Paint(b, "jsonObjectKey")
+			b.WriteByte('"')
+			b.WriteString(string(subk))
+			b.WriteByte('"')
+			painter.Reset(b)
+			b.WriteString(": ")
+			renderJSONValue(b, subv, currIndent+indent, indent, painter)
+			b.WriteByte('\n')
+		})
+		b.WriteString(currIndent)
+		b.WriteByte('}')
+	case fastjson.TypeArray:
+		b.WriteString("[\n")
+		for _, subv := range v.GetArray() {
+			b.WriteString(currIndent)
+			b.WriteString(indent)
+			renderJSONValue(b, subv, currIndent+indent, indent, painter)
+			b.WriteByte(',')
+			b.WriteByte('\n')
+		}
+		b.WriteString(currIndent)
+		b.WriteByte(']')
+	case fastjson.TypeString:
+		painter.Paint(b, "jsonString")
+		b.WriteString(v.String())
+		painter.Reset(b)
+	case fastjson.TypeNumber:
+		painter.Paint(b, "jsonNumber")
+		b.WriteString(v.String())
+		painter.Reset(b)
+	case fastjson.TypeTrue, fastjson.TypeFalse:
+		painter.Paint(b, "jsonBoolean")
+		b.WriteString(v.String())
+		painter.Reset(b)
+	case fastjson.TypeNull:
+		painter.Paint(b, "jsonNull")
+		b.WriteString(v.String())
+		painter.Reset(b)
+	default:
+		log.Fatalf("unexpected JSON type: %s", v.Type())
+	}
 }
 
 func main() {

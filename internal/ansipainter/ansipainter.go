@@ -143,28 +143,38 @@ func New(attrsFromRole map[string][]Attribute) *ANSIPainter {
 // BunyanPainter styles rendered output the same as `bunyan`.
 var BunyanPainter = New(map[string][]Attribute{
 	"message": {FgCyan},
-	// Log levels:
-	"trace": {FgWhite},
-	"debug": {FgYellow},
-	"info":  {FgCyan},
-	"warn":  {FgMagenta},
-	"error": {FgRed},
-	"fatal": {ReverseVideo},
+	"trace":   {FgWhite},
+	"debug":   {FgYellow},
+	"info":    {FgCyan},
+	"warn":    {FgMagenta},
+	"error":   {FgRed},
+	"fatal":   {ReverseVideo},
 })
 
 // PinoPrettyPainter styles rendered output the same as `pino-pretty`.
 var PinoPrettyPainter = New(map[string][]Attribute{
 	"message": {FgCyan},
-	// Log Levels:
-	"trace": {FgHiBlack},
-	// TODO: is this blue visible on cmd.exe? See suggestions above.
-	"debug": {FgBlue},
-	"info":  {FgGreen},
-	"warn":  {FgYellow},
-	"error": {FgRed},
-	"fatal": {BgRed},
+	"trace":   {FgHiBlack}, // FgHiBlack is chalk's conversion of "grey".
+	"debug":   {FgBlue},    // TODO: is this blue visible on cmd.exe?
+	"info":    {FgGreen},
+	"warn":    {FgYellow},
+	"error":   {FgRed},
+	"fatal":   {BgRed},
 })
 
 // DefaultPainter ... TODO:doc
-// TODO: reeval default colors (perhaps Pino but chaing the FgBlue usage)
-var DefaultPainter = PinoPrettyPainter
+// TODO: test on black bg, windows
+// TODO: could add styles for punctuation (jq bolds them, I'd tend to make them faint)
+var DefaultPainter = New(map[string][]Attribute{
+	"message":       {FgCyan},
+	"extraField":    {Bold},
+	"jsonObjectKey": {FgHiBlue},
+	"jsonString":    {FgGreen},
+	"jsonNull":      {Bold, FgBlack},
+	"trace":         {FgHiBlack},
+	"debug":         {FgHiBlue},
+	"info":          {FgGreen},
+	"warn":          {FgYellow},
+	"error":         {FgRed},
+	"fatal":         {BgRed},
+})

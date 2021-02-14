@@ -1,6 +1,5 @@
 # top
 
-- finish default format handling of extra fields
 - special error.stacktrace rendering
 - special HTTP rendering?
 - refactor render() and support multiple formats
@@ -14,7 +13,7 @@
 - be resilient with type-errors and dotted-name collisions in other fields
   (i.e. don't want to spend time for full schema validation)
 * pass other lines unchanged
-* colorized output
+- colorized output: (TODO: src, --no-color/color/isatty handling)
 - `-l, --level` filtering support
 - format/renderer support, minimal set of formats
 - basic config file support (TOML? JSON?) ... at least to select personally
