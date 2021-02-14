@@ -2,9 +2,6 @@
 
 - refactor render() and support multiple formats
 - finish color handling: options, envvars, isatty
-- input args cases:
-  - update usage for these options
-  - specify that multifile behaviour may change later to merge on @timestamp
 
 # mvp
 
@@ -36,6 +33,7 @@
 - default format:
   - special case printing of multiline extra field values (e.g. typically error.stack_trace)
   - ...
+- specify that multifile behaviour may change later to merge on @timestamp
 
 # later
 

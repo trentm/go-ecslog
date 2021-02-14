@@ -28,7 +28,14 @@ func printError(msg string) {
 }
 
 func printUsage() {
-	fmt.Printf("usage: ecslog [OPTIONS] LOG-FILE\n")
+	// XXX print "ecslog $version"
+	// XXX add URL when ahve a public one
+	fmt.Printf(`Usage:
+  ecslog [OPTIONS] [LOG-FILES...]
+  SOME-COMMAND | ecslog [OPTIONS]
+
+Options:
+`)
 	flags.PrintDefaults()
 }
 
@@ -36,7 +43,7 @@ func main() {
 	flags.SortFlags = false
 	flags.Usage = printUsage
 	flags.Parse(os.Args[1:])
-	// TODO: warn if flogLevel is an unknown level (per levelValFromName)
+	// TODO: warn if flagLevel is an unknown level (per levelValFromName)
 
 	if *flagHelp {
 		printUsage()
@@ -53,6 +60,7 @@ func main() {
 	core := ecszap.NewCore(encoderConfig, os.Stdout, logLevel)
 	logger := zap.New(core, zap.AddCaller()).Named("ecslog")
 
+	// XXX refactor "State" to a name like ECSLogRenderer
 	st := ecslog.NewState(logger)
 	st.SetLevelFilter(*flagLevel)
 
