@@ -3,10 +3,8 @@
 - refactor render() and support multiple formats
 - finish color handling: options, envvars, isatty
 - input args cases:
-  - stdin
-  - one file
-  - multiple log files (specify that this behaviour will change later to
-    merge on @timestamp)
+  - update usage for these options
+  - specify that multifile behaviour may change later to merge on @timestamp
 
 # mvp
 
