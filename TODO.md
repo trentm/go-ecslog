@@ -1,8 +1,9 @@
 # top
 
-- color: https://github.com/fatih/color
-- get ECS log examples from all the ecs-logging-$lang examples to learn from
-  and test with
+- finish default format handling of extra fields
+- special error.stacktrace rendering
+- special HTTP rendering?
+- refactor render() and support multiple formats
 
 # mvp
 
@@ -13,12 +14,12 @@
 - be resilient with type-errors and dotted-name collisions in other fields
   (i.e. don't want to spend time for full schema validation)
 * pass other lines unchanged
-- colorized output
+* colorized output
 - `-l, --level` filtering support
 - format/renderer support, minimal set of formats
 - basic config file support (TOML? JSON?) ... at least to select personally
   preferred format
-- don't choke on crazy long lines, i.e. input line handler needs to have maxlen
+* don't choke on crazy long lines, i.e. input line handler needs to have maxlen
 - NOTICE.md
 - bug reporting facility on crash? Not sure we can with golang.
 - tests
@@ -28,6 +29,8 @@
 
 # later
 
+- get ECS log examples from all the ecs-logging-$lang examples to learn from
+  and test with
 - formats:
     - ecs: the native format that is ndjson
     - <default> (TODO: name) for safe and future-proof default format
@@ -42,6 +45,7 @@
 - decide on and doc the default format (and name it). Bunyan-y fancy, or
   pino-pretty-y reasonable default. See some discussion in README and main.go
 - ditto for "http" format. Should fit with default format.
+- rendering and painting of logging.orig (aka bunyan "src") fields
 - naming:
     ecslog
     ecs-pretty
@@ -55,4 +59,5 @@
 - perhaps use https://github.com/elastic/makelogs for testing input?
   I don't know if this is ECS-y at all. Guessing only sort of. Useful
   for fuzzing-ish?
+- benchmarking to be able to test out "TODO perf" ideas
 

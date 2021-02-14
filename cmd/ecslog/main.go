@@ -10,6 +10,8 @@ import (
 	"github.com/valyala/fastjson"
 	"go.elastic.co/ecszap"
 	"go.uber.org/zap"
+
+	"github.com/trentm/go-ecslog/internal/ansipainter"
 )
 
 const maxLineLen = 8192
@@ -83,13 +85,13 @@ func dottedGetBytes(rec *fastjson.Value, aStr, bStr string) []byte {
 	return abBytes
 }
 
-func render(logger *zap.Logger, rec *fastjson.Value) {
+func render(rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
 	// TODO perf: strings.Builder re-use between runs of `render()`?
 	var b strings.Builder
 
 	// Drop "ecs.version". No point in rendering it.
 	dottedGetBytes(rec, "ecs", "version")
-	logLevel := dottedGetBytes(rec, "log", "level")
+	logLevel := string(dottedGetBytes(rec, "log", "level"))
 	logLogger := dottedGetBytes(rec, "log", "logger")
 	serviceName := dottedGetBytes(rec, "service", "name")
 	hostHostname := dottedGetBytes(rec, "host", "hostname")
@@ -110,7 +112,9 @@ func render(logger *zap.Logger, rec *fastjson.Value) {
 	b.Write(rec.GetStringBytes(("@timestamp")))
 	rec.Del("@timestamp")
 	b.WriteString("] ")
-	fmt.Fprintf(&b, "%5s", strings.ToUpper(string(logLevel)))
+	painter.Paint(&b, logLevel)
+	fmt.Fprintf(&b, "%5s", strings.ToUpper(logLevel))
+	painter.Reset(&b)
 	if logLogger != nil || serviceName != nil || hostHostname != nil {
 		b.WriteString(" (")
 		alreadyWroteSome := false
@@ -135,7 +139,9 @@ func render(logger *zap.Logger, rec *fastjson.Value) {
 		b.WriteByte(')')
 	}
 	b.WriteString(": ")
+	painter.Paint(&b, "message")
 	b.Write(rec.GetStringBytes("message"))
+	painter.Reset(&b)
 	rec.Del("message")
 
 	// Render the remaining fields:
@@ -174,7 +180,7 @@ func main() {
 		logLevel = zap.DebugLevel
 	}
 	core := ecszap.NewCore(encoderConfig, os.Stdout, logLevel)
-	logger := zap.New(core, zap.AddCaller()).Named("ecslog")
+	lg := zap.New(core, zap.AddCaller()).Named("ecslog")
 
 	// Parse args.
 	if len(flags.Args()) != 1 {
@@ -183,7 +189,7 @@ func main() {
 		os.Exit(2)
 	}
 	logFile := flags.Arg(0)
-	logger.Debug("logFile", zap.String("logFile", logFile))
+	lg.Debug("logFile", zap.String("logFile", logFile))
 
 	f, err := os.Open(logFile)
 	if err != nil {
@@ -195,6 +201,7 @@ func main() {
 	for scanner.Scan() {
 		// TODO perf: use scanner.Bytes https://golang.org/pkg/bufio/#Scanner.Bytes
 		line := scanner.Text()
+		// TODO: allow leading whitespace
 		if len(line) > maxLineLen || len(line) == 0 || line[0] != '{' {
 			fmt.Println(line)
 			continue
@@ -202,7 +209,7 @@ func main() {
 
 		rec, err := p.Parse(line)
 		if err != nil {
-			logger.Debug("line parse error", zap.Error(err))
+			lg.Debug("line parse error", zap.Error(err))
 			fmt.Println(line)
 			continue
 		}
@@ -212,7 +219,7 @@ func main() {
 			continue
 		}
 
-		render(logger, rec)
+		render(rec, ansipainter.DefaultPainter)
 	}
 	if err := scanner.Err(); err != nil {
 		error(fmt.Sprintf("reading '%s': %s", logFile, err))

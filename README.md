@@ -3,6 +3,12 @@
 Playing with a CLI for pretty formatting of ecs-logging format logs, a la
 `bunyan` and `pino-pretty`.
 
+Current status:
+
+```sh
+go run cmd/ecslog/main.go ./demo.log
+```
+
 # Goals
 
 - Easy to install and use.
