@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -198,7 +199,16 @@ func renderJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 		b.WriteByte(']')
 	case fastjson.TypeString:
 		painter.Paint(b, "jsonString")
-		b.WriteString(v.String())
+		sBytes := v.GetStringBytes()
+		if bytes.ContainsRune(sBytes, '\n') {
+			// Special case printing of multi-line strings.
+			b.WriteByte('\n')
+			b.WriteString(currIndent)
+			b.WriteString(indent)
+			b.WriteString(strings.Join(strings.Split(string(sBytes), "\n"), "\n"+currIndent+indent))
+		} else {
+			b.WriteString(v.String())
+		}
 		painter.Reset(b)
 	case fastjson.TypeNumber:
 		painter.Paint(b, "jsonNumber")

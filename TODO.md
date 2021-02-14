@@ -1,6 +1,5 @@
 # top
 
-- special error.stacktrace rendering
 - special HTTP rendering?
 - refactor render() and support multiple formats
 
@@ -10,8 +9,6 @@
 - Take a file to read from. Decide on args and opts for this. Same as bunyan?
   What other comparisons? jq? json? pino-pretty?
 * validate and render ECS-format lines (recognized by just required fields)
-- be resilient with type-errors and dotted-name collisions in other fields
-  (i.e. don't want to spend time for full schema validation)
 * pass other lines unchanged
 - colorized output: (TODO: src, --no-color/color/isatty handling)
 - `-l, --level` filtering support
@@ -22,9 +19,17 @@
 - NOTICE.md
 - bug reporting facility on crash? Not sure we can with golang.
 - tests
+  - be resilient with type-errors and dotted-name collisions in other fields
+    (i.e. don't want to spend time for full schema validation)
 - tail -f?
 - less-like pager?
 - basic intro docs in README
+
+# docs
+
+- default format:
+  - special case printing of multiline extra field values (e.g. typically error.stack_trace)
+  - ...
 
 # later
 
