@@ -1,17 +1,24 @@
 # top
 
-- special HTTP rendering?
 - refactor render() and support multiple formats
+- input args cases:
+  - stdin
+  - one file
+  - multiple log files (specify that this behaviour will change later to
+    merge on @timestamp)
 
 # mvp
 
 * stream ndjson stdin, render to stdout
-- Take a file to read from. Decide on args and opts for this. Same as bunyan?
-  What other comparisons? jq? json? pino-pretty?
+- input args cases:
+  - stdin
+  - one file
+  - multiple log files (specify that this behaviour will change later to
+    merge on @timestamp)
 * validate and render ECS-format lines (recognized by just required fields)
 * pass other lines unchanged
 - colorized output: (TODO: src, --no-color/color/isatty handling)
-- `-l, --level` filtering support
+* `-l, --level` filtering support
 - format/renderer support, minimal set of formats
 - basic config file support (TOML? JSON?) ... at least to select personally
   preferred format
@@ -33,6 +40,8 @@
 
 # later
 
+- revisit -v,--verbose and own internal logging in ecs-logging format. It isn't
+  very useful... because passing its stderr through ecslog again is awkward
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with
 - formats:
@@ -49,6 +58,12 @@
 - decide on and doc the default format (and name it). Bunyan-y fancy, or
   pino-pretty-y reasonable default. See some discussion in README and main.go
 - ditto for "http" format. Should fit with default format.
+- special HTTP rendering (include .body if it is added)
+- option to highlight a matching string? or leave that to the pager? Could
+  pass it on to the pager. Could be a vi-like "+<num>" or "+/query".
+- handling myriad other logging levels: upper case, syslog-y level names,
+  spellings of 'warn/warning', etc. All these in a *sorted* order for level
+  filtering.
 - rendering and painting of logging.orig (aka bunyan "src") fields
 - naming:
     ecslog

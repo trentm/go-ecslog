@@ -22,6 +22,10 @@ const maxLineLen = 8192
 var flags = pflag.NewFlagSet("ecslog", pflag.ExitOnError)
 var flagVerbose = flags.BoolP("verbose", "v", false, "verbose output")
 var flagHelp = flags.BoolP("help", "h", false, "print this help")
+var flagLevel = flags.StringP("level", "l", "",
+	`Filter out log records below the given level.
+ECS does not mandate log level names. This supports level
+names and ordering from common logging frameworks.`)
 
 func error(msg string) {
 	fmt.Fprintf(os.Stderr, "error: %s\n", msg)
@@ -32,26 +36,41 @@ func usage() {
 	flags.PrintDefaults()
 }
 
-func isEcsRecord(rec *fastjson.Value) bool {
-	// TODO perf: allow mutation of rec, and filling out record struct with these core fields
+// IsECSLoggingRecord returns true iff the given `rec` has the required
+// ecs-logging fields.
+//
+// It also *mutates* the given `st` runtime state and `rec` record: populating
+// `st` with the extracted core fields, while deleting those fields from `rec`.
+// This is for performance, to avoid having to lookup those fields twice.
+//
+// XXX make this public in internal/ecs
+func IsECSLoggingRecord(st *state, rec *fastjson.Value) bool {
+	timestamp := rec.GetStringBytes("@timestamp")
+	if timestamp == nil {
+		return false
+	} else {
+		st.timestamp = timestamp
+		rec.Del("@timestamp")
+	}
 
-	// TODO: type check this as string: https://pkg.go.dev/github.com/valyala/fastjson#Value.Type
-	if !rec.Exists("@timestamp") {
+	message := rec.GetStringBytes("message")
+	if message == nil {
+		return false
+	} else {
+		st.message = message
+		rec.Del("message")
+	}
+
+	ecsVersion := dottedGetBytes(rec, "ecs", "version")
+	if ecsVersion == nil {
 		return false
 	}
 
-	// XXX log.level
-
-	// TODO: type check this as string
-	if !rec.Exists("message") {
+	logLevel := dottedGetBytes(rec, "log", "level")
+	if logLevel == nil {
 		return false
-	}
-
-	ecs := rec.Get("ecs")
-	// TODO: check ecs has a "version" and is a string
-	// TODO: type check version is string
-	if ecs == nil && !rec.Exists("ecs.version") {
-		return false
+	} else {
+		st.logLevel = string(logLevel)
 	}
 
 	return true
@@ -87,13 +106,10 @@ func dottedGetBytes(rec *fastjson.Value, aStr, bStr string) []byte {
 	return abBytes
 }
 
-func render(rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
+func render(st *state, rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
 	// TODO perf: strings.Builder re-use between runs of `render()`?
 	var b strings.Builder
 
-	// Drop "ecs.version". No point in rendering it.
-	dottedGetBytes(rec, "ecs", "version")
-	logLevel := string(dottedGetBytes(rec, "log", "level"))
 	logLogger := dottedGetBytes(rec, "log", "logger")
 	serviceName := dottedGetBytes(rec, "service", "name")
 	hostHostname := dottedGetBytes(rec, "host", "hostname")
@@ -111,11 +127,10 @@ func render(rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
 	//   typical pino:    [@timestamp] LEVEL (pid on host): message
 	//   typical winston: [@timestamp] LEVEL: message
 	b.WriteByte('[')
-	b.Write(rec.GetStringBytes(("@timestamp")))
-	rec.Del("@timestamp")
+	b.Write(st.timestamp)
 	b.WriteString("] ")
-	painter.Paint(&b, logLevel)
-	fmt.Fprintf(&b, "%5s", strings.ToUpper(logLevel))
+	painter.Paint(&b, st.logLevel)
+	fmt.Fprintf(&b, "%5s", strings.ToUpper(st.logLevel))
 	painter.Reset(&b)
 	if logLogger != nil || serviceName != nil || hostHostname != nil {
 		b.WriteString(" (")
@@ -142,16 +157,16 @@ func render(rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
 	}
 	b.WriteString(": ")
 	painter.Paint(&b, "message")
-	b.Write(rec.GetStringBytes("message"))
+	b.Write(st.message)
 	painter.Reset(&b)
-	rec.Del("message")
 
 	// Render the remaining fields:
 	//    $key: <render $value as indented JSON-ish>
 	// where "JSON-ish" is:
-	// - 4-space indentation (note: pino uses 2)
-	// - special casing for "error.stack"
-	// - special case other multi-line string values?
+	// - 4-space indentation
+	// - special casing multiline string values (commonly "error.stack_trace")
+	// - possible configurable key-specific rendering -- e.g. render "http"
+	//   fields as a HTTP request/response text representation
 	obj := rec.GetObject()
 	obj.Visit(func(k []byte, v *fastjson.Value) {
 		b.WriteString("\n    ")
@@ -160,7 +175,6 @@ func render(rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
 		painter.Reset(&b)
 		b.WriteString(": ")
 		// TODO: perhaps use this in compact format: b.WriteString(v.String())
-		// TODO: do recursive indented JSON-ish rendering
 		renderJSONValue(&b, v, "    ", "    ", painter)
 	})
 
@@ -227,10 +241,47 @@ func renderJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 	}
 }
 
+// ECSLevelLess returns true iff level1 is less than level2.
+//
+// Because ECS doesn't mandate a set of log level names for the "log.level"
+// field, nor any specific ordering of those log levels, this is a best
+// effort based on names and ordering from common logging frameworks.
+// If a level name is unknown, this returns false. Level names are considered
+// case-insensitive.
+func ECSLevelLess(level1, level2 string) bool {
+	val1, ok := levelValFromName[strings.ToLower(level1)]
+	if !ok {
+		return false
+	}
+	val2, ok := levelValFromName[strings.ToLower(level2)]
+	if !ok {
+		return false
+	}
+	return val1 < val2
+}
+
+var levelValFromName = map[string]int{
+	"trace":   10,
+	"debug":   20,
+	"info":    30,
+	"warn":    40,
+	"warning": 40,
+	"error":   50,
+	"fatal":   60,
+}
+
+type state struct {
+	lg        *zap.Logger
+	logLevel  string
+	timestamp []byte
+	message   []byte
+}
+
 func main() {
 	flags.SortFlags = false
 	flags.Usage = usage
 	flags.Parse(os.Args[1:])
+	// TODO: warn if flogLevel is an unknown level (per levelValFromName)
 
 	if *flagHelp {
 		usage()
@@ -261,6 +312,7 @@ func main() {
 		error(err.Error())
 		os.Exit(1)
 	}
+	st := &state{lg: lg}
 	var p fastjson.Parser
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -279,12 +331,16 @@ func main() {
 			continue
 		}
 
-		if !isEcsRecord(rec) {
+		if !IsECSLoggingRecord(st, rec) {
 			fmt.Println(line)
 			continue
 		}
 
-		render(rec, ansipainter.DefaultPainter)
+		if *flagLevel != "" && ECSLevelLess(st.logLevel, *flagLevel) {
+			continue
+		}
+
+		render(st, rec, ansipainter.DefaultPainter)
 	}
 	if err := scanner.Err(); err != nil {
 		error(fmt.Sprintf("reading '%s': %s", logFile, err))
