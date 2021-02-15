@@ -15,6 +15,9 @@ import (
 
 // Shared stuff for `ecslog` that isn't specific to the CLI.
 
+// Version is the semver version of this tool.
+const Version = "0.0.0"
+
 const maxLineLen = 8192
 
 // State stores ECS log record processing state.
