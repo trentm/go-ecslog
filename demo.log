@@ -1,5 +1,6 @@
 this line isn't in ECS format
 {"nor":"is this line"}
+{"this":"is invalid JSON
 
 {"log.level":"trace","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}
 {"log.level":"debug","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}

@@ -16,9 +16,11 @@ import (
 
 // flags
 var flags = pflag.NewFlagSet("ecslog", pflag.ExitOnError)
-var flagVerbose = flags.BoolP("verbose", "v", false, "verbose output")
 var flagHelp = flags.BoolP("help", "h", false, "print this help")
 var flagVersion = flags.Bool("version", false, "Print version info and exit.")
+var flagSelfDebug = flags.Bool("self-debug", false,
+	`Write debug output from ecslog itself to stderr.
+E.g. 'ecslog ... --self-debug >/dev/null 2>>(ecslog)'`)
 var flagLevel = flags.StringP("level", "l", "",
 	`Filter out log records below the given level.
 ECS does not mandate log level names. This supports level
@@ -34,8 +36,6 @@ func printVersion() {
 }
 
 func printUsage() {
-	// XXX print "ecslog $version"
-	// XXX add URL when ahve a public one
 	fmt.Printf(`ecslog -- pretty-print logs in ECS logging format
 
 usage:
@@ -49,6 +49,7 @@ options:
 
 func main() {
 	flags.SortFlags = false
+	flags.MarkHidden("self-debug") // For now, until/if have use case.
 	flags.Usage = printUsage
 	flags.Parse(os.Args[1:])
 	// TODO: warn if flagLevel is an unknown level (per levelValFromName)
@@ -66,10 +67,10 @@ func main() {
 	// https://www.elastic.co/guide/en/ecs-logging/go-zap/current/setup.html
 	encoderConfig := ecszap.NewDefaultEncoderConfig()
 	logLevel := zap.FatalLevel
-	if *flagVerbose {
+	if *flagSelfDebug {
 		logLevel = zap.DebugLevel
 	}
-	core := ecszap.NewCore(encoderConfig, os.Stdout, logLevel)
+	core := ecszap.NewCore(encoderConfig, os.Stderr, logLevel)
 	logger := zap.New(core, zap.AddCaller()).Named("ecslog")
 
 	// XXX refactor "State" to a name like ecslog.Renderer and methods

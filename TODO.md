@@ -1,5 +1,6 @@
 # top
 
+- refactor "State" to a name like ecslog.Renderer and methods
 - refactor render() and support multiple formats
 - finish color handling: options, envvars, isatty
 
@@ -37,10 +38,6 @@
 
 # later
 
-- revisit -v,--verbose and own internal logging in ecs-logging format. It isn't
-  very useful... because passing its stderr through ecslog again is awkward.
-  Perhaps revisit this along with bug reporting. When is trace/debug logging
-  from ecslog itself helpful? Compare to bunyan's `BUNYAN_SELF_TRACE` envvar only.
 - --version flag
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with
