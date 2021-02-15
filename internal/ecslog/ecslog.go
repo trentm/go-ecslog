@@ -45,7 +45,12 @@ func (s *State) SetLevelFilter(level string) {
 
 // levelValFromName is a best-effort ordering of levels in common usage in
 // logging frameworks that might be used in ECS format. See `ECSLevelLess`
-// below.
+// below. (The actual int values are only used internally and can change between
+// versions.)
+//
+// - zap: https://pkg.go.dev/go.uber.org/zap/#AtomicLevel.MarshalText
+// - bunyan: https://github.com/trentm/node-bunyan/tree/master/#levels
+// - ...
 var levelValFromName = map[string]int{
 	"trace":   10,
 	"debug":   20,
@@ -53,7 +58,9 @@ var levelValFromName = map[string]int{
 	"warn":    40,
 	"warning": 40,
 	"error":   50,
-	"fatal":   60,
+	"dpanic":  60,
+	"panic":   70,
+	"fatal":   80,
 }
 
 // ECSLevelLess returns true iff level1 is less than level2.
