@@ -73,16 +73,15 @@ func main() {
 	core := ecszap.NewCore(encoderConfig, os.Stderr, logLevel)
 	logger := zap.New(core, zap.AddCaller()).Named("ecslog")
 
-	// XXX refactor "State" to a name like ecslog.Renderer and methods
-	st := ecslog.NewState(logger)
-	st.SetLevelFilter(*flagLevel)
+	r := ecslog.NewRenderer(logger)
+	r.SetLevelFilter(*flagLevel)
 
 	var f *os.File
 	var err error
 	var errs []error
 	if len(flags.Args()) == 0 {
 		f = os.Stdin
-		err = ecslog.RenderFile(st, f)
+		err = r.RenderFile(f)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -93,7 +92,7 @@ func main() {
 				errs = append(errs, err)
 				continue
 			}
-			err = ecslog.RenderFile(st, f)
+			err = r.RenderFile(f)
 			if err != nil {
 				errs = append(errs, err)
 			}

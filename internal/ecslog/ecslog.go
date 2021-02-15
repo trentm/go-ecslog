@@ -20,8 +20,8 @@ const Version = "0.0.0"
 
 const maxLineLen = 8192
 
-// State stores ECS log record processing state.
-type State struct {
+// Renderer is the class used to drive ECS log rendering (aka pretty printing).
+type Renderer struct {
 	Log         *zap.Logger // singleton internal logger for an `ecslog` run
 	levelFilter string
 
@@ -31,15 +31,15 @@ type State struct {
 	message   []byte // extracted "message" for the current record
 }
 
-// NewState returns a new State object for holding processing state.
-func NewState(logger *zap.Logger) *State {
-	return &State{Log: logger}
+// NewRenderer returns a new ECS logging log renderer.
+func NewRenderer(logger *zap.Logger) *Renderer {
+	return &Renderer{Log: logger}
 }
 
 // SetLevelFilter ... TODO:doc
-func (s *State) SetLevelFilter(level string) {
+func (r *Renderer) SetLevelFilter(level string) {
 	if level != "" {
-		s.levelFilter = level
+		r.levelFilter = level
 	}
 }
 
@@ -112,25 +112,25 @@ func dottedGetBytes(rec *fastjson.Value, aStr, bStr string) []byte {
 	return abBytes
 }
 
-// IsECSLoggingRecord returns true iff the given `rec` has the required
+// isECSLoggingRecord returns true iff the given `rec` has the required
 // ecs-logging fields.
 //
-// It also *mutates* the given `st` runtime state and `rec` record: populating
-// `st` with the extracted core fields, while deleting those fields from `rec`.
+// It also *mutates* the given Renderer and `rec` record: populating `r`
+// with the extracted core fields, while deleting those fields from `rec`.
 // This is for performance, to avoid having to lookup those fields twice.
-func IsECSLoggingRecord(st *State, rec *fastjson.Value) bool {
+func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
 	timestamp := rec.GetStringBytes("@timestamp")
 	if timestamp == nil {
 		return false
 	}
-	st.timestamp = timestamp
+	r.timestamp = timestamp
 	rec.Del("@timestamp")
 
 	message := rec.GetStringBytes("message")
 	if message == nil {
 		return false
 	}
-	st.message = message
+	r.message = message
 	rec.Del("message")
 
 	ecsVersion := dottedGetBytes(rec, "ecs", "version")
@@ -142,14 +142,14 @@ func IsECSLoggingRecord(st *State, rec *fastjson.Value) bool {
 	if logLevel == nil {
 		return false
 	}
-	st.logLevel = string(logLevel)
+	r.logLevel = string(logLevel)
 
 	return true
 }
 
-// RenderFile ... TODO:doc
-func RenderFile(st *State, f *os.File) error {
-	var p fastjson.Parser // XXX put this in State
+// RenderFile renders log records in the given open file stream.
+func (r *Renderer) RenderFile(f *os.File) error {
+	var p fastjson.Parser // XXX put this in Renderer
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		// TODO perf: use scanner.Bytes https://golang.org/pkg/bufio/#Scanner.Bytes
@@ -162,27 +162,27 @@ func RenderFile(st *State, f *os.File) error {
 
 		rec, err := p.Parse(line)
 		if err != nil {
-			st.Log.Debug("line parse error", zap.Error(err))
+			r.Log.Debug("line parse error", zap.Error(err))
 			fmt.Println(line)
 			continue
 		}
 
-		if !IsECSLoggingRecord(st, rec) {
+		if !r.isECSLoggingRecord(rec) {
 			fmt.Println(line)
 			continue
 		}
 
 		// `--level info` will drop an log records less than log.level=info.
-		if st.levelFilter != "" && ECSLevelLess(st.logLevel, st.levelFilter) {
+		if r.levelFilter != "" && ECSLevelLess(r.logLevel, r.levelFilter) {
 			continue
 		}
 
-		renderRecord(st, rec, ansipainter.DefaultPainter)
+		r.renderRecord(rec, ansipainter.DefaultPainter)
 	}
 	return scanner.Err()
 }
 
-func renderRecord(st *State, rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
+func (r *Renderer) renderRecord(rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
 	// TODO perf: strings.Builder re-use between runs of `render()`?
 	var b strings.Builder
 
@@ -203,10 +203,10 @@ func renderRecord(st *State, rec *fastjson.Value, painter *ansipainter.ANSIPaint
 	//   typical pino:    [@timestamp] LEVEL (pid on host): message
 	//   typical winston: [@timestamp] LEVEL: message
 	b.WriteByte('[')
-	b.Write(st.timestamp)
+	b.Write(r.timestamp)
 	b.WriteString("] ")
-	painter.Paint(&b, st.logLevel)
-	fmt.Fprintf(&b, "%5s", strings.ToUpper(st.logLevel))
+	painter.Paint(&b, r.logLevel)
+	fmt.Fprintf(&b, "%5s", strings.ToUpper(r.logLevel))
 	painter.Reset(&b)
 	if logLogger != nil || serviceName != nil || hostHostname != nil {
 		b.WriteString(" (")
@@ -233,7 +233,7 @@ func renderRecord(st *State, rec *fastjson.Value, painter *ansipainter.ANSIPaint
 	}
 	b.WriteString(": ")
 	painter.Paint(&b, "message")
-	b.Write(st.message)
+	b.Write(r.message)
 	painter.Reset(&b)
 
 	// Render the remaining fields:
