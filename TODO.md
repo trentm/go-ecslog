@@ -1,19 +1,18 @@
 # top
 
 - refactor render() and support multiple formats
-- finish color handling: options, envvars, isatty
 
 # mvp
 
 * stream ndjson stdin, render to stdout
 * input args cases: stdin, one file, multiple files
-* validate and render ECS-format lines (recognized by just required fields)
+* validate and render ECS-format lines
 * pass other lines unchanged
-- colorized output: (TODO: src, --no-color/color/isatty handling)
+* colorized output
 * `-l, --level` filtering support
 - format/renderer support, minimal set of formats
 - basic config file support (TOML? JSON?) ... at least to select personally
-  preferred format
+  preferred format. Or just envvars?
 * don't choke on crazy long lines, i.e. input line handler needs to have maxlen
 - NOTICE.md
 - bug reporting facility on crash? Not sure we can with golang.
@@ -33,23 +32,18 @@
 
 # later
 
+- the other output formats:
+  - http
+  - compact
+  - simple
+- -x,--exclude-fields option to remove the given fields from the rendering
+  of any line
 - coloring for added zap and other levels (test case for this)
 - --version flag
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with
 - Long-form online help. From --help vs -h? or general man page? What's typical or
   nice in go-land.
-- formats:
-    - ecs: the native format that is ndjson
-    - <default> (TODO: name) for safe and future-proof default format
-      to be defined, but leaning towards pino-pretty-like (TODO: design).
-      *Perhaps* has built-in layout for ecs-logging/spec/spec.json-defined
-      fields (like `error.*` and `log.*`)
-    - <???>: a format that tries a bit harder to be pretty for some things
-      like http req/res beyond the <default>. Perhaps just those? If so
-      then could call this "http" format.
-    - "short" or something like that for oneline or reduced output
-      Perhaps always include an ellipsis if info is being elided?
 - decide on and doc the default format (and name it). Bunyan-y fancy, or
   pino-pretty-y reasonable default. See some discussion in README and main.go
 - ditto for "http" format. Should fit with default format.
@@ -59,7 +53,9 @@
 - handling myriad other logging levels: upper case, syslog-y level names,
   spellings of 'warn/warning', etc. All these in a *sorted* order for level
   filtering.
-- rendering and painting of logging.orig (aka bunyan "src") fields
+- src fields: log.origin.file.* (note that ecs-logging zap logger emits
+  `"log.origin"."file.name"`, which adds a surprise)
+    - also colorizing these
 - naming:
     ecslog
     ecs-pretty
@@ -77,4 +73,3 @@
   I don't know if this is ECS-y at all. Guessing only sort of. Useful
   for fuzzing-ish?
 - benchmarking to be able to test out "TODO perf" ideas
-
