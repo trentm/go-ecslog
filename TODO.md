@@ -1,17 +1,12 @@
 # top
 
-- refactor "State" to a name like ecslog.Renderer and methods
 - refactor render() and support multiple formats
 - finish color handling: options, envvars, isatty
 
 # mvp
 
 * stream ndjson stdin, render to stdout
-- input args cases:
-  - stdin
-  - one file
-  - multiple log files (specify that this behaviour will change later to
-    merge on @timestamp)
+* input args cases: stdin, one file, multiple files
 * validate and render ECS-format lines (recognized by just required fields)
 * pass other lines unchanged
 - colorized output: (TODO: src, --no-color/color/isatty handling)
@@ -38,6 +33,7 @@
 
 # later
 
+- coloring for added zap and other levels (test case for this)
 - --version flag
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with

@@ -18,13 +18,20 @@ import (
 var flags = pflag.NewFlagSet("ecslog", pflag.ExitOnError)
 var flagHelp = flags.BoolP("help", "h", false, "print this help")
 var flagVersion = flags.Bool("version", false, "Print version info and exit.")
-var flagSelfDebug = flags.Bool("self-debug", false,
+var flagSelfDebug = flags.Bool("self-debug", false, // hidden
 	`Write debug output from ecslog itself to stderr.
 E.g. 'ecslog ... --self-debug >/dev/null 2>>(ecslog)'`)
 var flagLevel = flags.StringP("level", "l", "",
 	`Filter out log records below the given level.
 ECS does not mandate log level names. This supports level
 names and ordering from common logging frameworks.`)
+
+var flagColor = flags.Bool("color", false,
+	`Colorize output. Without this option, coloring will be
+done if stdout is a TTY.`)
+var flagNoColor = flags.Bool("no-color", false, "Force no coloring of output.")
+var flagColorScheme = flags.StringP("color-scheme", "c", "default",
+	"Color scheme to use, if colorizing.") // hidden
 
 func printError(msg string) {
 	fmt.Fprintf(os.Stderr, "ecslog: error: %s\n", msg)
@@ -35,27 +42,43 @@ func printVersion() {
 	// TODO: when have public URL: fmt.Printf("https://github.com/...\n")
 }
 
-func printUsage() {
-	fmt.Printf(`ecslog -- pretty-print logs in ECS logging format
-
-usage:
+const usageHead = `usage:
   ecslog [OPTIONS] LOG-FILES...
   SOME-COMMAND | ecslog [OPTIONS]
 
 options:
-`)
+`
+
+// printHelp prints help output to stdout.
+func printHelp() {
+	fmt.Printf(`ecslog -- pretty-print logs in ECS logging format
+
+%s
+`, usageHead)
+	flags.SetOutput(os.Stdout)
+	flags.PrintDefaults()
+	flags.SetOutput(os.Stderr)
+}
+
+// printUsage prints relatively terse usage info to stderr (by default)
+func printUsage() {
+	fmt.Fprint(os.Stderr, usageHead)
 	flags.PrintDefaults()
 }
 
 func main() {
+	var err error
+	var errs []error
+	var f *os.File
+
 	flags.SortFlags = false
-	flags.MarkHidden("self-debug") // For now, until/if have use case.
+	flags.MarkHidden("self-debug")   // For now, until/if have use case.
+	flags.MarkHidden("color-scheme") // Hidden until have meaningful other color schemes.
 	flags.Usage = printUsage
 	flags.Parse(os.Args[1:])
-	// TODO: warn if flagLevel is an unknown level (per levelValFromName)
 
 	if *flagHelp {
-		printUsage()
+		printHelp()
 		os.Exit(0)
 	}
 	if *flagVersion {
@@ -73,12 +96,24 @@ func main() {
 	core := ecszap.NewCore(encoderConfig, os.Stderr, logLevel)
 	logger := zap.New(core, zap.AddCaller()).Named("ecslog")
 
-	r := ecslog.NewRenderer(logger)
+	shouldColorize := "auto"
+	if *flagColor && *flagNoColor {
+		printError("cannot specify both --color and --no-color")
+		os.Exit(1)
+	} else if *flagColor {
+		shouldColorize = "yes"
+	} else if *flagNoColor {
+		shouldColorize = "no"
+	}
+
+	r, err := ecslog.NewRenderer(logger, shouldColorize, *flagColorScheme)
+	if err != nil {
+		printError(err.Error())
+		os.Exit(1)
+	}
+	// TODO: warn (err?) if flagLevel is an unknown level (per levelValFromName)
 	r.SetLevelFilter(*flagLevel)
 
-	var f *os.File
-	var err error
-	var errs []error
 	if len(flags.Args()) == 0 {
 		f = os.Stdin
 		err = r.RenderFile(f)

@@ -122,7 +122,8 @@ func (p *ANSIPainter) Reset(b *strings.Builder) {
 	}
 }
 
-// New ... TODO:doc
+// New creates a new ANSIPainter from a mapping of roles (parts of a rendered
+// log record) to an array of ANSI attributes (colors and styles).
 func New(attrsFromRole map[string][]Attribute) *ANSIPainter {
 	p := ANSIPainter{}
 	p.sgrFromRole = make(map[string]string)
@@ -139,6 +140,9 @@ func New(attrsFromRole map[string][]Attribute) *ANSIPainter {
 	}
 	return &p
 }
+
+// NoColorPainter is a painter that emits no ANSI codes.
+var NoColorPainter = New(nil)
 
 // BunyanPainter styles rendered output the same as `bunyan`.
 var BunyanPainter = New(map[string][]Attribute{
@@ -162,7 +166,7 @@ var PinoPrettyPainter = New(map[string][]Attribute{
 	"fatal":   {BgRed},
 })
 
-// DefaultPainter ... TODO:doc
+// DefaultPainter implements the stock default color scheme for `ecslog`.
 // TODO: test on black bg, windows
 // TODO: could add styles for punctuation (jq bolds them, I'd tend to make them faint)
 var DefaultPainter = New(map[string][]Attribute{
@@ -178,3 +182,10 @@ var DefaultPainter = New(map[string][]Attribute{
 	"error":         {FgRed},
 	"fatal":         {BgRed},
 })
+
+// PainterFromName maps known painter name to an ANSIPainter.
+var PainterFromName = map[string]*ANSIPainter{
+	"bunyan":      BunyanPainter,
+	"pino-pretty": PinoPrettyPainter,
+	"default":     DefaultPainter,
+}

@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
 
+	"github.com/mattn/go-isatty"
 	"github.com/trentm/go-ecslog/internal/ansipainter"
 	"github.com/valyala/fastjson"
 	"go.uber.org/zap"
@@ -24,16 +26,55 @@ const maxLineLen = 8192
 type Renderer struct {
 	Log         *zap.Logger // singleton internal logger for an `ecslog` run
 	levelFilter string
+	parser      fastjson.Parser
+	painter     *ansipainter.ANSIPainter
 
-	// XXX can these be internal now?
 	logLevel  string // extracted "log.level" for the current record
 	timestamp []byte // extracted "@timestamp" for the current record
 	message   []byte // extracted "message" for the current record
 }
 
 // NewRenderer returns a new ECS logging log renderer.
-func NewRenderer(logger *zap.Logger) *Renderer {
-	return &Renderer{Log: logger}
+//
+// - `logger` is an internal logger, unrelated to the log content begin
+//   processed
+// - `shouldColorize` is one of "auto" (meaning colorize if the output stream
+//   is a TTY), "yes", or "no"
+// - `colorScheme` is the name of one of the colors schemes in
+//   ansipainter.PainterFromName
+func NewRenderer(logger *zap.Logger, shouldColorize, colorScheme string) (*Renderer, error) {
+	// Get appropriate "painter" for terminal coloring.
+	var painter *ansipainter.ANSIPainter
+	if shouldColorize == "auto" {
+		if isatty.IsTerminal(os.Stdout.Fd()) {
+			shouldColorize = "yes"
+		} else {
+			shouldColorize = "no"
+		}
+	}
+	switch shouldColorize {
+	case "yes":
+		var ok bool
+		painter, ok = ansipainter.PainterFromName[colorScheme]
+		if !ok {
+			var known []string
+			for n := range ansipainter.PainterFromName {
+				known = append(known, n)
+			}
+			sort.Strings(known)
+			return nil, fmt.Errorf("unknown color scheme '%s' (known schemes: %s)",
+				colorScheme, strings.Join(known, ", "))
+		}
+	case "no":
+		painter = ansipainter.NoColorPainter
+	default:
+		return nil, fmt.Errorf("invalid value for shouldColorize: %s", shouldColorize)
+	}
+
+	logger.Debug("create renderer",
+		zap.String("shouldColorize", shouldColorize),
+		zap.String("colorScheme", colorScheme))
+	return &Renderer{Log: logger, painter: painter}, nil
 }
 
 // SetLevelFilter ... TODO:doc
@@ -149,7 +190,6 @@ func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
 
 // RenderFile renders log records in the given open file stream.
 func (r *Renderer) RenderFile(f *os.File) error {
-	var p fastjson.Parser // XXX put this in Renderer
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		// TODO perf: use scanner.Bytes https://golang.org/pkg/bufio/#Scanner.Bytes
@@ -160,7 +200,7 @@ func (r *Renderer) RenderFile(f *os.File) error {
 			continue
 		}
 
-		rec, err := p.Parse(line)
+		rec, err := r.parser.Parse(line)
 		if err != nil {
 			r.Log.Debug("line parse error", zap.Error(err))
 			fmt.Println(line)
@@ -177,12 +217,12 @@ func (r *Renderer) RenderFile(f *os.File) error {
 			continue
 		}
 
-		r.renderRecord(rec, ansipainter.DefaultPainter)
+		r.renderRecord(rec)
 	}
 	return scanner.Err()
 }
 
-func (r *Renderer) renderRecord(rec *fastjson.Value, painter *ansipainter.ANSIPainter) {
+func (r *Renderer) renderRecord(rec *fastjson.Value) {
 	// TODO perf: strings.Builder re-use between runs of `render()`?
 	var b strings.Builder
 
@@ -205,9 +245,9 @@ func (r *Renderer) renderRecord(rec *fastjson.Value, painter *ansipainter.ANSIPa
 	b.WriteByte('[')
 	b.Write(r.timestamp)
 	b.WriteString("] ")
-	painter.Paint(&b, r.logLevel)
+	r.painter.Paint(&b, r.logLevel)
 	fmt.Fprintf(&b, "%5s", strings.ToUpper(r.logLevel))
-	painter.Reset(&b)
+	r.painter.Reset(&b)
 	if logLogger != nil || serviceName != nil || hostHostname != nil {
 		b.WriteString(" (")
 		alreadyWroteSome := false
@@ -232,9 +272,9 @@ func (r *Renderer) renderRecord(rec *fastjson.Value, painter *ansipainter.ANSIPa
 		b.WriteByte(')')
 	}
 	b.WriteString(": ")
-	painter.Paint(&b, "message")
+	r.painter.Paint(&b, "message")
 	b.Write(r.message)
-	painter.Reset(&b)
+	r.painter.Reset(&b)
 
 	// Render the remaining fields:
 	//    $key: <render $value as indented JSON-ish>
@@ -246,12 +286,12 @@ func (r *Renderer) renderRecord(rec *fastjson.Value, painter *ansipainter.ANSIPa
 	obj := rec.GetObject()
 	obj.Visit(func(k []byte, v *fastjson.Value) {
 		b.WriteString("\n    ")
-		painter.Paint(&b, "extraField")
+		r.painter.Paint(&b, "extraField")
 		b.Write(k)
-		painter.Reset(&b)
+		r.painter.Reset(&b)
 		b.WriteString(": ")
 		// TODO: perhaps use this in compact format: b.WriteString(v.String())
-		renderJSONValue(&b, v, "    ", "    ", painter)
+		renderJSONValue(&b, v, "    ", "    ", r.painter)
 	})
 
 	fmt.Println(b.String())
