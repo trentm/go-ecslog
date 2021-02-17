@@ -21,17 +21,21 @@ var flagVersion = flags.Bool("version", false, "Print version info and exit.")
 var flagSelfDebug = flags.Bool("self-debug", false, // hidden
 	`Write debug output from ecslog itself to stderr.
 E.g. 'ecslog ... --self-debug >/dev/null 2>>(ecslog)'`)
-var flagLevel = flags.StringP("level", "l", "",
-	`Filter out log records below the given level.
-ECS does not mandate log level names. This supports level
-names and ordering from common logging frameworks.`)
 
+var flagFormatName = flags.StringP("format", "f", "default",
+	`Output format for rendered ECS log records.
+`)
 var flagColor = flags.Bool("color", false,
 	`Colorize output. Without this option, coloring will be
 done if stdout is a TTY.`)
 var flagNoColor = flags.Bool("no-color", false, "Force no coloring of output.")
 var flagColorScheme = flags.StringP("color-scheme", "c", "default",
 	"Color scheme to use, if colorizing.") // hidden
+
+var flagLevel = flags.StringP("level", "l", "",
+	`Filter out log records below the given level.
+This supports level names and ordering from common
+logging frameworks.`)
 
 func printError(msg string) {
 	fmt.Fprintf(os.Stderr, "ecslog: error: %s\n", msg)
@@ -99,6 +103,7 @@ func main() {
 	shouldColorize := "auto"
 	if *flagColor && *flagNoColor {
 		printError("cannot specify both --color and --no-color")
+		printUsage()
 		os.Exit(1)
 	} else if *flagColor {
 		shouldColorize = "yes"
@@ -106,9 +111,10 @@ func main() {
 		shouldColorize = "no"
 	}
 
-	r, err := ecslog.NewRenderer(logger, shouldColorize, *flagColorScheme)
+	r, err := ecslog.NewRenderer(logger, shouldColorize, *flagColorScheme, *flagFormatName)
 	if err != nil {
 		printError(err.Error())
+		printUsage()
 		os.Exit(1)
 	}
 	// TODO: warn (err?) if flagLevel is an unknown level (per levelValFromName)

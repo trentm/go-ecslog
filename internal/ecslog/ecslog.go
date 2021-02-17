@@ -2,9 +2,7 @@ package ecslog
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"sort"
 	"strings"
@@ -28,7 +26,10 @@ type Renderer struct {
 	levelFilter string
 	parser      fastjson.Parser
 	painter     *ansipainter.ANSIPainter
+	formatName  string
+	formatter   Formatter
 
+	line      string // the raw input line
 	logLevel  string // extracted "log.level" for the current record
 	timestamp []byte // extracted "@timestamp" for the current record
 	message   []byte // extracted "message" for the current record
@@ -42,7 +43,7 @@ type Renderer struct {
 //   is a TTY), "yes", or "no"
 // - `colorScheme` is the name of one of the colors schemes in
 //   ansipainter.PainterFromName
-func NewRenderer(logger *zap.Logger, shouldColorize, colorScheme string) (*Renderer, error) {
+func NewRenderer(logger *zap.Logger, shouldColorize, colorScheme, formatName string) (*Renderer, error) {
 	// Get appropriate "painter" for terminal coloring.
 	var painter *ansipainter.ANSIPainter
 	if shouldColorize == "auto" {
@@ -71,10 +72,27 @@ func NewRenderer(logger *zap.Logger, shouldColorize, colorScheme string) (*Rende
 		return nil, fmt.Errorf("invalid value for shouldColorize: %s", shouldColorize)
 	}
 
+	formatter, ok := formatterFromName[formatName]
+	if !ok {
+		var known []string
+		for n := range formatterFromName {
+			known = append(known, n)
+		}
+		sort.Strings(known)
+		return nil, fmt.Errorf("unknown format '%s' (known formats: %s)",
+			formatName, strings.Join(known, ", "))
+	}
+
 	logger.Debug("create renderer",
+		zap.String("formatName", formatName),
 		zap.String("shouldColorize", shouldColorize),
 		zap.String("colorScheme", colorScheme))
-	return &Renderer{Log: logger, painter: painter}, nil
+	return &Renderer{
+		Log:        logger,
+		painter:    painter,
+		formatName: formatName,
+		formatter:  formatter,
+	}, nil
 }
 
 // SetLevelFilter ... TODO:doc
@@ -190,6 +208,7 @@ func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
 
 // RenderFile renders log records in the given open file stream.
 func (r *Renderer) RenderFile(f *os.File) error {
+	var b strings.Builder
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		// TODO perf: use scanner.Bytes https://golang.org/pkg/bufio/#Scanner.Bytes
@@ -211,148 +230,16 @@ func (r *Renderer) RenderFile(f *os.File) error {
 			fmt.Println(line)
 			continue
 		}
+		r.line = line
 
 		// `--level info` will drop an log records less than log.level=info.
 		if r.levelFilter != "" && ECSLevelLess(r.logLevel, r.levelFilter) {
 			continue
 		}
 
-		r.renderRecord(rec)
+		r.formatter.formatRecord(r, rec, &b)
+		fmt.Println(b.String())
+		b.Reset()
 	}
 	return scanner.Err()
-}
-
-func (r *Renderer) renderRecord(rec *fastjson.Value) {
-	// TODO perf: strings.Builder re-use between runs of `render()`?
-	var b strings.Builder
-
-	logLogger := dottedGetBytes(rec, "log", "logger")
-	serviceName := dottedGetBytes(rec, "service", "name")
-	hostHostname := dottedGetBytes(rec, "host", "hostname")
-
-	// Title line pattern:
-	//
-	//    [@timestamp] LEVEL (log.logger/service.name on host.hostname): message
-	//
-	// - TODO: re-work this title line pattern, the parens section is weak
-	//   - bunyan will always have $log.logger
-	//   - bunyan and pino will typically have $process.pid
-	//   - What about other languages?
-	//   - $service.name will typically only be there with automatic injection
-	//   typical bunyan:  [@timestamp] LEVEL (name/pid on host): message
-	//   typical pino:    [@timestamp] LEVEL (pid on host): message
-	//   typical winston: [@timestamp] LEVEL: message
-	b.WriteByte('[')
-	b.Write(r.timestamp)
-	b.WriteString("] ")
-	r.painter.Paint(&b, r.logLevel)
-	fmt.Fprintf(&b, "%5s", strings.ToUpper(r.logLevel))
-	r.painter.Reset(&b)
-	if logLogger != nil || serviceName != nil || hostHostname != nil {
-		b.WriteString(" (")
-		alreadyWroteSome := false
-		if logLogger != nil {
-			b.Write(logLogger)
-			alreadyWroteSome = true
-		}
-		if serviceName != nil {
-			if alreadyWroteSome {
-				b.WriteByte('/')
-			}
-			b.Write(serviceName)
-			alreadyWroteSome = true
-		}
-		if hostHostname != nil {
-			if alreadyWroteSome {
-				b.WriteByte(' ')
-			}
-			b.WriteString("on ")
-			b.Write(hostHostname)
-		}
-		b.WriteByte(')')
-	}
-	b.WriteString(": ")
-	r.painter.Paint(&b, "message")
-	b.Write(r.message)
-	r.painter.Reset(&b)
-
-	// Render the remaining fields:
-	//    $key: <render $value as indented JSON-ish>
-	// where "JSON-ish" is:
-	// - 4-space indentation
-	// - special casing multiline string values (commonly "error.stack_trace")
-	// - possible configurable key-specific rendering -- e.g. render "http"
-	//   fields as a HTTP request/response text representation
-	obj := rec.GetObject()
-	obj.Visit(func(k []byte, v *fastjson.Value) {
-		b.WriteString("\n    ")
-		r.painter.Paint(&b, "extraField")
-		b.Write(k)
-		r.painter.Reset(&b)
-		b.WriteString(": ")
-		// TODO: perhaps use this in compact format: b.WriteString(v.String())
-		renderJSONValue(&b, v, "    ", "    ", r.painter)
-	})
-
-	fmt.Println(b.String())
-}
-
-func renderJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent string, painter *ansipainter.ANSIPainter) {
-	switch v.Type() {
-	case fastjson.TypeObject:
-		b.WriteString("{\n")
-		obj := v.GetObject()
-		obj.Visit(func(subk []byte, subv *fastjson.Value) {
-			b.WriteString(currIndent)
-			b.WriteString(indent)
-			painter.Paint(b, "jsonObjectKey")
-			b.WriteByte('"')
-			b.WriteString(string(subk))
-			b.WriteByte('"')
-			painter.Reset(b)
-			b.WriteString(": ")
-			renderJSONValue(b, subv, currIndent+indent, indent, painter)
-			b.WriteByte('\n')
-		})
-		b.WriteString(currIndent)
-		b.WriteByte('}')
-	case fastjson.TypeArray:
-		b.WriteString("[\n")
-		for _, subv := range v.GetArray() {
-			b.WriteString(currIndent)
-			b.WriteString(indent)
-			renderJSONValue(b, subv, currIndent+indent, indent, painter)
-			b.WriteByte(',')
-			b.WriteByte('\n')
-		}
-		b.WriteString(currIndent)
-		b.WriteByte(']')
-	case fastjson.TypeString:
-		painter.Paint(b, "jsonString")
-		sBytes := v.GetStringBytes()
-		if bytes.ContainsRune(sBytes, '\n') {
-			// Special case printing of multi-line strings.
-			b.WriteByte('\n')
-			b.WriteString(currIndent)
-			b.WriteString(indent)
-			b.WriteString(strings.Join(strings.Split(string(sBytes), "\n"), "\n"+currIndent+indent))
-		} else {
-			b.WriteString(v.String())
-		}
-		painter.Reset(b)
-	case fastjson.TypeNumber:
-		painter.Paint(b, "jsonNumber")
-		b.WriteString(v.String())
-		painter.Reset(b)
-	case fastjson.TypeTrue, fastjson.TypeFalse:
-		painter.Paint(b, "jsonBoolean")
-		b.WriteString(v.String())
-		painter.Reset(b)
-	case fastjson.TypeNull:
-		painter.Paint(b, "jsonNull")
-		b.WriteString(v.String())
-		painter.Reset(b)
-	default:
-		log.Fatalf("unexpected JSON type: %s", v.Type())
-	}
 }

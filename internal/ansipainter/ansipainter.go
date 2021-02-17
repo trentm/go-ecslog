@@ -105,9 +105,6 @@ func (p *ANSIPainter) Paint(b *strings.Builder, role string) {
 	sgr, ok := p.sgrFromRole[role]
 	if ok {
 		b.WriteString(sgr)
-		// b.WriteString("\x1b[")
-		// b.WriteString(strconv.Itoa(attr))
-		// b.WriteByte('m')
 		p.painting = true
 	} else {
 		p.painting = false

@@ -21,7 +21,6 @@ Nice to haves:
 
 - Configurable/pluggable output formatting would be nice.
 - Filtering support: levels, other fields.
-- `tail -f`-like support
 - `less` integration a la `bunyan`
 - Stats collection and reporting, if there are meaningful common cases
   here. Otherwise this could get out of hand.
@@ -37,8 +36,8 @@ Non-goals:
 # Output formats
 
 `ecslog` has multiple output formats for rendering ECS logs that may be selected
-via the `-o, --output` option. Note that some formats as *lossy*, i.e. elide
-some fields, typically for compactness.
+via the `-f, --format NAME` option. Note that some formats as *lossy*, i.e.
+elide some fields, typically for compactness.
 
 - "default": A lossless default format that renders each log record with a
   title line to convey core and common fields, followed by all remaining
