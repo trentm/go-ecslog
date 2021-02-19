@@ -18,6 +18,65 @@ type Formatter interface {
 type defaultFormatter struct{}
 
 func (f *defaultFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
+	formatDefaultTitleLine(r, rec, b)
+
+	// Render the remaining fields:
+	//    $key: <render $value as indented JSON-ish>
+	// where "JSON-ish" is:
+	// - 4-space indentation
+	// - special casing multiline string values (commonly "error.stack_trace")
+	// - possible configurable key-specific rendering -- e.g. render "http"
+	//   fields as a HTTP request/response text representation
+	obj := rec.GetObject()
+	obj.Visit(func(k []byte, v *fastjson.Value) {
+		b.WriteString("\n    ")
+		r.painter.Paint(b, "extraField")
+		b.Write(k)
+		r.painter.Reset(b)
+		b.WriteString(": ")
+		formatJSONValue(b, v, "    ", "    ", r.painter, false)
+	})
+}
+
+type compactFormatter struct{}
+
+func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
+	formatDefaultTitleLine(r, rec, b)
+
+	// Render the remaining fields:
+	//    $key: <render $value as compact JSON-ish>
+	// where "compact JSON-ish" means:
+	// - on one line if it roughtly fits in 80 columns, else 4-space indented
+	// - special casing multiline string values (commonly "error.stack_trace")
+	// - possible configurable key-specific rendering -- e.g. render "http"
+	//   fields as a HTTP request/response text representation
+	obj := rec.GetObject()
+	obj.Visit(func(k []byte, v *fastjson.Value) {
+		b.WriteString("\n    ")
+		r.painter.Paint(b, "extraField")
+		b.Write(k)
+		r.painter.Reset(b)
+		b.WriteString(": ")
+		// Using v.String() here to estimate width is poor because:
+		// 1. It doesn't include spacing that ultimately is used, so is off by
+		//    some number of chars.
+		// 2. I'm guessing this involves more allocs that could be done by
+		//    maintaining a width cound and doing a walk through equivalent to
+		// 	  `formatJSONValue`.
+		// TODO: do this walk through, can early abort if over width limit.
+		// TODO: can we determine current terminal width rather than hardcode 80?
+		vStr := v.String()
+		// 80 (terminal width) - 8 (indentation) - length of `k` - len(": ")
+		if len(vStr) < 80-8-len(k)-2 {
+			formatJSONValue(b, v, "    ", "    ", r.painter, true)
+		} else {
+			b.WriteString(fmt.Sprintf("(%d) ", len(vStr)))
+			formatJSONValue(b, v, "    ", "    ", r.painter, false)
+		}
+	})
+}
+
+func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
 	logLogger := dottedGetBytes(rec, "log", "logger")
 	serviceName := dottedGetBytes(rec, "service", "name")
 	hostHostname := dottedGetBytes(rec, "host", "hostname")
@@ -67,61 +126,67 @@ func (f *defaultFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 	r.painter.Paint(b, "message")
 	b.Write(r.message)
 	r.painter.Reset(b)
-
-	// Render the remaining fields:
-	//    $key: <render $value as indented JSON-ish>
-	// where "JSON-ish" is:
-	// - 4-space indentation
-	// - special casing multiline string values (commonly "error.stack_trace")
-	// - possible configurable key-specific rendering -- e.g. render "http"
-	//   fields as a HTTP request/response text representation
-	obj := rec.GetObject()
-	obj.Visit(func(k []byte, v *fastjson.Value) {
-		b.WriteString("\n    ")
-		r.painter.Paint(b, "extraField")
-		b.Write(k)
-		r.painter.Reset(b)
-		b.WriteString(": ")
-		// TODO: perhaps use this in compact format: b.WriteString(v.String())
-		formatJSONValue(b, v, "    ", "    ", r.painter)
-	})
-
 }
 
-func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent string, painter *ansipainter.ANSIPainter) {
+func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent string, painter *ansipainter.ANSIPainter, compact bool) {
+	var i uint
+
 	switch v.Type() {
 	case fastjson.TypeObject:
-		b.WriteString("{\n")
+		b.WriteByte('{')
 		obj := v.GetObject()
+		i = 0
 		obj.Visit(func(subk []byte, subv *fastjson.Value) {
-			b.WriteString(currIndent)
-			b.WriteString(indent)
+			if i != 0 {
+				b.WriteByte(',')
+				if compact {
+					b.WriteByte(' ')
+				}
+			}
+			if !compact {
+				b.WriteByte('\n')
+				b.WriteString(currIndent)
+				b.WriteString(indent)
+			}
 			painter.Paint(b, "jsonObjectKey")
 			b.WriteByte('"')
 			b.WriteString(string(subk))
 			b.WriteByte('"')
 			painter.Reset(b)
 			b.WriteString(": ")
-			formatJSONValue(b, subv, currIndent+indent, indent, painter)
-			b.WriteByte('\n')
+			formatJSONValue(b, subv, currIndent+indent, indent, painter, compact)
+			i++
 		})
-		b.WriteString(currIndent)
+		if !compact {
+			b.WriteByte('\n')
+			b.WriteString(currIndent)
+		}
 		b.WriteByte('}')
 	case fastjson.TypeArray:
-		b.WriteString("[\n")
-		for _, subv := range v.GetArray() {
-			b.WriteString(currIndent)
-			b.WriteString(indent)
-			formatJSONValue(b, subv, currIndent+indent, indent, painter)
-			b.WriteByte(',')
-			b.WriteByte('\n')
+		b.WriteByte('[')
+		for i, subv := range v.GetArray() {
+			if i != 0 {
+				b.WriteByte(',')
+				if compact {
+					b.WriteByte(' ')
+				}
+			}
+			if !compact {
+				b.WriteByte('\n')
+				b.WriteString(currIndent)
+				b.WriteString(indent)
+			}
+			formatJSONValue(b, subv, currIndent+indent, indent, painter, compact)
 		}
-		b.WriteString(currIndent)
+		if !compact {
+			b.WriteByte('\n')
+			b.WriteString(currIndent)
+		}
 		b.WriteByte(']')
 	case fastjson.TypeString:
 		painter.Paint(b, "jsonString")
 		sBytes := v.GetStringBytes()
-		if bytes.ContainsRune(sBytes, '\n') {
+		if !compact && bytes.ContainsRune(sBytes, '\n') {
 			// Special case printing of multi-line strings.
 			b.WriteByte('\n')
 			b.WriteString(currIndent)
@@ -135,8 +200,12 @@ func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 		painter.Paint(b, "jsonNumber")
 		b.WriteString(v.String())
 		painter.Reset(b)
-	case fastjson.TypeTrue, fastjson.TypeFalse:
-		painter.Paint(b, "jsonBoolean")
+	case fastjson.TypeTrue:
+		painter.Paint(b, "jsonTrue")
+		b.WriteString(v.String())
+		painter.Reset(b)
+	case fastjson.TypeFalse:
+		painter.Paint(b, "jsonFalse")
 		b.WriteString(v.String())
 		painter.Reset(b)
 	case fastjson.TypeNull:
@@ -148,7 +217,7 @@ func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 	}
 }
 
-// A simple formatter that uses the raw ECS JSON line.
+// ecsFormatter formats log records as the raw original ECS JSON line.
 type ecsFormatter struct{}
 
 func (f *ecsFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
@@ -170,6 +239,7 @@ func (f *simpleFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *stri
 	b.Write(r.message)
 	r.painter.Reset(b)
 
+	// Ellipsis if there are more fields.
 	recObj := rec.GetObject()
 	if recObj.Len() != 0 {
 		b.WriteByte(' ')
@@ -183,4 +253,5 @@ var formatterFromName = map[string]Formatter{
 	"default": &defaultFormatter{},
 	"ecs":     &ecsFormatter{},
 	"simple":  &simpleFormatter{},
+	"compact": &compactFormatter{},
 }

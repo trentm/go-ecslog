@@ -1,6 +1,5 @@
 # top
 
-- implement simple and compact formats
 - better lookup that handles arbitrary dotted fields
 
 # mvp
@@ -11,7 +10,7 @@
 - [x] pass other lines unchanged
 - [x] colorized output
 - [x] `-l, --level` filtering support
-- [ ] format/renderer support, minimal set of formats
+- [x] format/renderer support, minimal set of formats
 - [ ] basic config file support (TOML? JSON?) ... at least to select personally
   preferred format. Or just envvars?
 - [x] don't choke on crazy long lines, i.e. input line handler needs to have maxlen
@@ -32,9 +31,7 @@
 
 # later
 
-- the other output formats:
-  - http
-  - compact
+- "http" output format
 - -x,--exclude-fields option to remove the given fields from the rendering
   of any line
 - coloring for added zap and other levels (test case for this)

@@ -79,7 +79,6 @@ elide some fields, typically for compactness.
 - "compact": A lossless format similar to "default", but attempts are made
   to make the "extraKey" info more compact by balancing multiline JSON with
   80-column output.
-  TODO: not yet implemented.
 
 - "http": A lossless format similar to "default", but attempts to render
   HTTP-related ECS fields in HTTP request and response text representation.
