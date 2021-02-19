@@ -51,7 +51,7 @@ elide some fields, typically for compactness.
 
   where "multiline jsonish" means 4-space-indented JSON with the one special
   case that multiline string values are printed indented and with newlines.
-  For example, "error.stack_trace" in the following:
+  For example, "error.stack\_trace" in the following:
 
   ```
   [2021-02-11T06:24:53.251Z]  WARN (myapi on purple.local): something went wrong
@@ -75,7 +75,6 @@ elide some fields, typically for compactness.
   simply renders `LOG.LEVEL: message`. If extra fields (other than the core
   "@timestamp" and "ecs.version" fields) are being elided, a ellipsis is
   appended to the line.
-  TODO: not yet implemented.
 
 - "compact": A lossless format similar to "default", but attempts are made
   to make the "extraKey" info more compact by balancing multiline JSON with

@@ -172,6 +172,7 @@ var DefaultPainter = New(map[string][]Attribute{
 	"jsonObjectKey": {FgHiBlue},
 	"jsonString":    {FgGreen},
 	"jsonNull":      {Bold, FgBlack},
+	"ellipsis":      {Faint},
 	"trace":         {FgHiBlack},
 	"debug":         {FgHiBlue},
 	"info":          {FgGreen},

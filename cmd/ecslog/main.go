@@ -57,8 +57,7 @@ options:
 func printHelp() {
 	fmt.Printf(`ecslog -- pretty-print logs in ECS logging format
 
-%s
-`, usageHead)
+%s`, usageHead)
 	flags.SetOutput(os.Stdout)
 	flags.PrintDefaults()
 	flags.SetOutput(os.Stderr)

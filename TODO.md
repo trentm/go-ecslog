@@ -1,28 +1,29 @@
 # top
 
 - implement simple and compact formats
+- better lookup that handles arbitrary dotted fields
 
 # mvp
 
-* stream ndjson stdin, render to stdout
-* input args cases: stdin, one file, multiple files
-* validate and render ECS-format lines
-* pass other lines unchanged
-* colorized output
-* `-l, --level` filtering support
-- format/renderer support, minimal set of formats
-- basic config file support (TOML? JSON?) ... at least to select personally
+- [x] stream ndjson stdin, render to stdout
+- [x] input args cases: stdin, one file, multiple files
+- [x] validate and render ECS-format lines
+- [x] pass other lines unchanged
+- [x] colorized output
+- [x] `-l, --level` filtering support
+- [ ] format/renderer support, minimal set of formats
+- [ ] basic config file support (TOML? JSON?) ... at least to select personally
   preferred format. Or just envvars?
-* don't choke on crazy long lines, i.e. input line handler needs to have maxlen
-- NOTICE.md
-- less-like pager?
-- basic intro docs in README
-- tests
+- [x] don't choke on crazy long lines, i.e. input line handler needs to have maxlen
+- [ ] NOTICE.md
+- [ ] less-like pager?
+- [ ] basic intro docs in README
+- [ ] tests
   - be resilient with type-errors and dotted-name collisions in other fields
     (i.e. don't want to spend time for full schema validation)
   - examples from all the ecs-logging libs
-- more robust dotted lookup
-- bug reporting facility on crash? Not sure we can with golang. Could just
+- [ ] more robust dotted lookup
+- [ ] bug reporting facility on crash? Not sure we can with golang. Could just
   be a `--bug` CLI and github issue template with commands to gather.
 
 # docs
@@ -34,7 +35,6 @@
 - the other output formats:
   - http
   - compact
-  - simple
 - -x,--exclude-fields option to remove the given fields from the rendering
   of any line
 - coloring for added zap and other levels (test case for this)

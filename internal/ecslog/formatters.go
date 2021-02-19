@@ -155,7 +155,32 @@ func (f *ecsFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings
 	b.WriteString(r.line)
 }
 
+// simpleFormatter formats log records as:
+//      $LOG.LEVEL: $message [$ellipsis]
+// where $ellipsis is an ellipsis if there are any non-core remaining fields in
+// the record that are being elided.
+type simpleFormatter struct{}
+
+func (f *simpleFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
+	r.painter.Paint(b, r.logLevel)
+	fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))
+	r.painter.Reset(b)
+	b.WriteString(": ")
+	r.painter.Paint(b, "message")
+	b.Write(r.message)
+	r.painter.Reset(b)
+
+	recObj := rec.GetObject()
+	if recObj.Len() != 0 {
+		b.WriteByte(' ')
+		r.painter.Paint(b, "ellipsis")
+		b.WriteRune('…')
+		r.painter.Reset(b)
+	}
+}
+
 var formatterFromName = map[string]Formatter{
 	"default": &defaultFormatter{},
 	"ecs":     &ecsFormatter{},
+	"simple":  &simpleFormatter{},
 }
