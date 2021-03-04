@@ -9,6 +9,7 @@ import (
 
 	"github.com/mattn/go-isatty"
 	"github.com/trentm/go-ecslog/internal/ansipainter"
+	"github.com/trentm/go-ecslog/internal/kqlog"
 	"github.com/valyala/fastjson"
 	"go.uber.org/zap"
 )
@@ -18,16 +19,18 @@ import (
 // Version is the semver version of this tool.
 const Version = "0.0.0"
 
+// TODO: make this configurable
 const maxLineLen = 16384
 
 // Renderer is the class used to drive ECS log rendering (aka pretty printing).
 type Renderer struct {
 	Log         *zap.Logger // singleton internal logger for an `ecslog` run
-	levelFilter string
 	parser      fastjson.Parser
 	painter     *ansipainter.ANSIPainter
 	formatName  string
 	formatter   Formatter
+	levelFilter string
+	kqlFilter   *kqlog.Filter
 
 	line      string // the raw input line
 	logLevel  string // extracted "log.level" for the current record
@@ -102,6 +105,15 @@ func (r *Renderer) SetLevelFilter(level string) {
 	}
 }
 
+// SetKQLFilter ... TODO:doc
+func (r *Renderer) SetKQLFilter(kql string) error {
+	var err error
+	if kql != "" {
+		r.kqlFilter, err = kqlog.NewFilter(kql)
+	}
+	return err
+}
+
 // levelValFromName is a best-effort ordering of levels in common usage in
 // logging frameworks that might be used in ECS format. See `ECSLevelLess`
 // below. (The actual int values are only used internally and can change between
@@ -110,6 +122,8 @@ func (r *Renderer) SetLevelFilter(level string) {
 // - zap: https://pkg.go.dev/go.uber.org/zap/#AtomicLevel.MarshalText
 // - bunyan: https://github.com/trentm/node-bunyan/tree/master/#levels
 // - ...
+// TODO: move the level order/filtering out to a separate package to be
+// usable by "kqlog". Update kqlog/README.md
 var levelValFromName = map[string]int{
 	"trace":   10,
 	"debug":   20,
@@ -232,8 +246,12 @@ func (r *Renderer) RenderFile(f *os.File) error {
 		}
 		r.line = line
 
-		// `--level info` will drop an log records less than log.level=info.
+		// `--level info` will drop any log records less than log.level=info.
 		if r.levelFilter != "" && ECSLevelLess(r.logLevel, r.levelFilter) {
+			continue
+		}
+
+		if r.kqlFilter != nil && !r.kqlFilter.Match(rec) {
 			continue
 		}
 

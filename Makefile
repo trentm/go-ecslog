@@ -13,3 +13,7 @@ run:
 .PHONY: tidy
 tidy:
 	go mod tidy
+
+.PHONY: clean
+clean:
+	rm -f ecslog

@@ -36,6 +36,10 @@ var flagLevel = flags.StringP("level", "l", "",
 	`Filter out log records below the given level.
 This supports level names and ordering from common
 logging frameworks.`)
+var flagKQL = flags.StringP("kql", "q", "",
+	`Filter log records with the given KQL query.
+E.g.: 'url.path:/foo and request.method:post'
+www.elastic.co/guide/en/kibana/current/kuery-query.html`)
 
 func printError(msg string) {
 	fmt.Fprintf(os.Stderr, "ecslog: error: %s\n", msg)
@@ -118,6 +122,12 @@ func main() {
 	}
 	// TODO: warn (err?) if flagLevel is an unknown level (per levelValFromName)
 	r.SetLevelFilter(*flagLevel)
+	err = r.SetKQLFilter(*flagKQL)
+	if err != nil {
+		printError("invalid KQL: " + err.Error())
+		// TODO: --help-kql option, then refer to it here
+		os.Exit(1)
+	}
 
 	if len(flags.Args()) == 0 {
 		f = os.Stdin

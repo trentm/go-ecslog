@@ -6,7 +6,11 @@
     ecslog: error: bufio.Scanner: token too long
   The log line had a huge "message" field... so need a guard on each field size.
   https://stackoverflow.com/questions/21124327 suggests "bufio.Reader.ReadLine"
-- better lookup that handles arbitrary dotted fields
+- kqlog
+  - impl all the rpnAction exec funcs
+  - type handling for exec
+  - quoted literals
+- get examples from the other ecs-loggers, esp. zap has some differences
 
 # mvp
 
@@ -20,7 +24,7 @@
 - [ ] basic config file support (TOML? JSON?) ... at least to select personally
   preferred format. Or just envvars?
 - [x] don't choke on crazy long lines, i.e. input line handler needs to have maxlen
-- [ ] NOTICE.md
+- [ ] NOTICE.md (some BSD from go in lex.go, some MIT from fatih/color)
 - [ ] less-like pager?
 - [ ] basic intro docs in README
 - [ ] tests
@@ -39,9 +43,8 @@
 
 - "http" output format
 - -x,--exclude-fields option to remove the given fields from the rendering
-  of any line
+  of any line, or -i, --include-fields?
 - coloring for added zap and other levels (test case for this)
-- coloring JSON values: see `rq` (true, false, number), also bolds the puncs
 - --version flag
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with
@@ -133,3 +136,20 @@
   Skip supporting this for starters. There can't be a lot of *log* records
   with arrays of objects, can there?
 
+## kuery code
+
+```typescript
+import {
+  esKuery,
+  IIndexPattern,
+  QuerySuggestion,
+} from '../../../../../../../src/plugins/data/public';
+
+function convertKueryToEsQuery(kuery: string, indexPattern: IIndexPattern) {
+  const ast = esKuery.fromKueryExpression(kuery);
+  return esKuery.toElasticsearchQuery(ast, indexPattern);
+}
+```
+
+src/plugins/data/common/es_query/kuery/ast/ast.test.ts
+~/el/kibana/src/plugins/data/common/es_query/kuery/ast/kuery.peg
