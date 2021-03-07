@@ -8,6 +8,8 @@ import (
 	"github.com/valyala/fastjson"
 )
 
+// XXX change signature of these to take `lookup ...string`, move typ before lookup
+
 // LookupValue looks up the JSON value identified by object property names in
 // `lookup`.
 //
@@ -95,6 +97,60 @@ func ExtractValue(obj *fastjson.Value, lookup []string) *fastjson.Value {
 		key = strings.Join(lookup[:i], ".")
 		subO := o.Get(key)
 		val = ExtractValue(subO, lookup[i:])
+		if val != nil {
+			if i == len(lookup) {
+				// The value is a property of `o`, e.g. a lookup of "a.b.c"
+				// in `{"a.b.c": 42}`.
+				o.Del(key)
+			} else if subO.GetObject().Len() == 0 {
+				o.Del(key)
+			}
+			return val
+		}
+	}
+
+	return nil
+}
+
+// ExtractValueOfType is a version of ExtractValue that only considers the
+// value a match if it is of the given type.
+func ExtractValueOfType(obj *fastjson.Value, lookup []string, typ fastjson.Type) *fastjson.Value {
+	var val *fastjson.Value
+	var key string
+
+	if obj == nil {
+		return nil
+	} else if len(lookup) == 0 {
+		if obj.Type() == typ {
+			return obj
+		}
+		return nil
+	}
+
+	o := obj.GetObject()
+	if o == nil {
+		return nil
+	}
+
+	if len(lookup) == 1 {
+		val = o.Get(lookup[0])
+		if val == nil || val.Type() != typ {
+			return nil
+		}
+		o.Del(lookup[0])
+		return val
+	}
+
+	// Otherwise, we have multiple lookup names.
+	//
+	// E.g.: Given: lookup=["a", "b", "c"]
+	// first try:   ExtractValueOfType(obj["a"], ["b", "c"])
+	// then try:    ExtractValueOfType(obj["a.b"], ["c"])
+	// then try:    ExtractValueOfType(obj["a.b.c"], [])
+	for i := 1; i <= len(lookup); i++ {
+		key = strings.Join(lookup[:i], ".")
+		subO := o.Get(key)
+		val = ExtractValueOfType(subO, lookup[i:], typ)
 		if val != nil {
 			if i == len(lookup) {
 				// The value is a property of `o`, e.g. a lookup of "a.b.c"

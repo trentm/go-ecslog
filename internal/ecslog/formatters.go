@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/trentm/go-ecslog/internal/ansipainter"
+	"github.com/trentm/go-ecslog/internal/jsonutils"
 	"github.com/valyala/fastjson"
 )
 
@@ -18,6 +19,8 @@ type Formatter interface {
 type defaultFormatter struct{}
 
 func (f *defaultFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
+	jsonutils.ExtractValue(rec, []string{"ecs", "version"})
+	jsonutils.ExtractValue(rec, []string{"log", "level"})
 	formatDefaultTitleLine(r, rec, b)
 
 	// Render the remaining fields:
@@ -41,6 +44,9 @@ func (f *defaultFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 type compactFormatter struct{}
 
 func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
+	jsonutils.ExtractValue(rec, []string{"ecs", "version"})
+	jsonutils.ExtractValue(rec, []string{"log", "level"})
+
 	formatDefaultTitleLine(r, rec, b)
 
 	// Render the remaining fields:
@@ -77,9 +83,22 @@ func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 }
 
 func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
-	logLogger := dottedGetBytes(rec, "log", "logger")
-	serviceName := dottedGetBytes(rec, "service", "name")
-	hostHostname := dottedGetBytes(rec, "host", "hostname")
+	var val *fastjson.Value
+	var logLogger []byte
+	if val = jsonutils.ExtractValueOfType(rec, []string{"log", "logger"}, fastjson.TypeString); val != nil {
+		logLogger = val.GetStringBytes()
+	}
+	var serviceName []byte
+	if val = jsonutils.ExtractValueOfType(rec, []string{"service", "name"}, fastjson.TypeString); val != nil {
+		serviceName = val.GetStringBytes()
+	}
+	var hostHostname []byte
+	if val = jsonutils.ExtractValueOfType(rec, []string{"host", "hostname"}, fastjson.TypeString); val != nil {
+		hostHostname = val.GetStringBytes()
+	}
+
+	timestamp := jsonutils.ExtractValue(rec, []string{"@timestamp"}).GetStringBytes()
+	message := jsonutils.ExtractValue(rec, []string{"message"}).GetStringBytes()
 
 	// Title line pattern:
 	//
@@ -94,7 +113,7 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 	//   typical pino:    [@timestamp] LEVEL (pid on host): message
 	//   typical winston: [@timestamp] LEVEL: message
 	b.WriteByte('[')
-	b.Write(r.timestamp)
+	b.Write(timestamp)
 	b.WriteString("] ")
 	r.painter.Paint(b, r.logLevel)
 	fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))
@@ -124,7 +143,7 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 	}
 	b.WriteString(": ")
 	r.painter.Paint(b, "message")
-	b.Write(r.message)
+	b.Write(message)
 	r.painter.Reset(b)
 }
 
@@ -231,12 +250,16 @@ func (f *ecsFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings
 type simpleFormatter struct{}
 
 func (f *simpleFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
+	jsonutils.ExtractValue(rec, []string{"ecs", "version"})
+	jsonutils.ExtractValue(rec, []string{"log", "level"})
+	message := jsonutils.ExtractValue(rec, []string{"message"}).GetStringBytes()
+
 	r.painter.Paint(b, r.logLevel)
 	fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))
 	r.painter.Reset(b)
 	b.WriteString(": ")
 	r.painter.Paint(b, "message")
-	b.Write(r.message)
+	b.Write(message)
 	r.painter.Reset(b)
 
 	// Ellipsis if there are more fields.

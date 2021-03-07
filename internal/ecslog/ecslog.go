@@ -10,6 +10,7 @@ import (
 
 	"github.com/mattn/go-isatty"
 	"github.com/trentm/go-ecslog/internal/ansipainter"
+	"github.com/trentm/go-ecslog/internal/jsonutils"
 	"github.com/trentm/go-ecslog/internal/kqlog"
 	"github.com/valyala/fastjson"
 	"go.uber.org/zap"
@@ -33,11 +34,8 @@ type Renderer struct {
 	levelFilter string
 	kqlFilter   *kqlog.Filter
 
-	line string // the raw input line
-	// XXX maybe don't need these anymore
-	logLevel  string // extracted "log.level" for the current record
-	timestamp []byte // extracted "@timestamp" for the current record
-	message   []byte // extracted "message" for the current record
+	line     string // the raw input line
+	logLevel string // cached "log.level", read during isECSLoggingRecord
 }
 
 // NewRenderer returns a new ECS logging log renderer.
@@ -155,67 +153,32 @@ func LogLevelLess(level1, level2 string) bool {
 	return val1 < val2
 }
 
-// dottedGetBytes looks up key "$aStr.$bStr" in the given record and removes
-// those entries from the record.
-func dottedGetBytes(rec *fastjson.Value, aStr, bStr string) []byte {
-	var abBytes []byte
-
-	// Try `{"a": {"b": <value>}}`.
-	aObj := rec.GetObject(aStr)
-	if aObj != nil {
-		abVal := aObj.Get(bStr)
-		if abVal != nil {
-			abBytes = abVal.GetStringBytes()
-			aObj.Del(bStr)
-			if aObj.Len() == 0 {
-				rec.Del(aStr)
-			}
-		}
-	}
-
-	// Try `{"a.b": <value>}`.
-	if abBytes == nil {
-		abStr := aStr + "." + bStr
-		abBytes = rec.GetStringBytes(abStr)
-		if abBytes != nil {
-			rec.Del(abStr)
-		}
-	}
-
-	return abBytes
-}
-
 // isECSLoggingRecord returns true iff the given `rec` has the required
-// ecs-logging fields.
+// ecs-logging fields: @timestamp, message, ecs.version, and log.level (all
+// strings).
 //
-// It also *mutates* the given Renderer and `rec` record: populating `r`
-// with the extracted core fields, while deleting those fields from `rec`.
-// This is for performance, to avoid having to lookup those fields twice.
+// Side-effect: r.logLevel is cached on the Renderer for subsequent use.
 func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
 	timestamp := rec.GetStringBytes("@timestamp")
 	if timestamp == nil {
 		return false
 	}
-	r.timestamp = timestamp
-	rec.Del("@timestamp")
 
 	message := rec.GetStringBytes("message")
 	if message == nil {
 		return false
 	}
-	r.message = message
-	rec.Del("message")
 
-	ecsVersion := dottedGetBytes(rec, "ecs", "version")
-	if ecsVersion == nil {
+	ecsVersion := jsonutils.LookupValue(rec, []string{"ecs", "version"})
+	if ecsVersion == nil || ecsVersion.Type() != fastjson.TypeString {
 		return false
 	}
 
-	logLevel := dottedGetBytes(rec, "log", "level")
-	if logLevel == nil {
+	logLevel := jsonutils.LookupValue(rec, []string{"log", "level"})
+	if logLevel == nil || logLevel.Type() != fastjson.TypeString {
 		return false
 	}
-	r.logLevel = string(logLevel)
+	r.logLevel = string(logLevel.GetStringBytes())
 
 	return true
 }
