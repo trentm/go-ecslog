@@ -38,7 +38,7 @@
 - [ ] more robust dotted lookup
 - [ ] bug reporting facility on crash? Not sure we can with golang. Could just
   be a `--bug` CLI and github issue template with commands to gather.
-- [ ] handle all `lg.Printf("Q: ...")` and `XXX` in the code
+- [ ] handle all `lg.Printf("Q: ...")` and `XXX` and `TODO` in the code
 
 # docs
 

@@ -67,12 +67,10 @@ func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 		// 1. It doesn't include spacing that ultimately is used, so is off by
 		//    some number of chars.
 		// 2. I'm guessing this involves more allocs that could be done by
-		//    maintaining a width cound and doing a walk through equivalent to
-		// 	  `formatJSONValue`.
-		// TODO: do this walk through, can early abort if over width limit.
-		// TODO: can we determine current terminal width rather than hardcode 80?
+		//    maintaining a width count and doing a walk through equivalent to
+		//	  `formatJSONValue`.
 		vStr := v.String()
-		// 80 (terminal width) - 8 (indentation) - length of `k` - len(": ")
+		// 80 (quotable width) - 8 (indentation) - length of `k` - len(": ")
 		if len(vStr) < 80-8-len(k)-2 {
 			formatJSONValue(b, v, "    ", "    ", r.painter, true)
 		} else {
