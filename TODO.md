@@ -6,10 +6,16 @@
     ecslog: error: bufio.Scanner: token too long
   The log line had a huge "message" field... so need a guard on each field size.
   https://stackoverflow.com/questions/21124327 suggests "bufio.Reader.ReadLine"
+- this:
+    cat ./demo.log | go run ./cmd/ecslog -q 'num > 4 and log.level > debug'
+  stop removal of the core fields until later
+    - s/dottedGetBytes/ExtractValue
 - kqlog
   - impl all the rpnAction exec funcs
   - type handling for exec
   - quoted literals
+- `-x, --elide-fields' or something to remote from rendering
+  Matching to *include* only given fields? Is this only about "extra" fields?
 - get examples from the other ecs-loggers, esp. zap has some differences
 
 # mvp
@@ -70,6 +76,7 @@
 - benchmarking to be able to test out "TODO perf" ideas
 - canned stats output? num records, num non-ECS, breakdown of service.name,
   http status report if http info, count of errors, breakdown of common errors
+- godoc and examples (https://blog.golang.org/examples)
 
 
 # KQL notes

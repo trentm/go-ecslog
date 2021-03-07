@@ -1,240 +1,27 @@
 package kqlog
 
-import (
-	"fmt"
-	"log"
-	"strings"
-
-	"github.com/valyala/fastjson"
-)
-
 // Parsing of a kqlog string to a `Filter` object that can be executed on given
 // log records.
 //
 // Usage:
-//     p := newParser(kql)
+//     kql := "... some KQL string ..."
+//     func logLevelLess(level1, level2 string) bool {
+//         // ...
+//     }
+//
+//     p := newParser(kql, logLevelLess)
 //     filter, err := p.parse()
 //     // use the `filter` (see type Filter in kqlog.go)
-//
 
-// rpnStep is a single step in the RPN series of steps used for filter matching.
-type rpnStep interface {
-	fmt.Stringer
-	exec(stack *boolStack, rec *fastjson.Value)
-}
-
-type rpnExistsQuery struct {
-	field string
-}
-
-func (q *rpnExistsQuery) exec(stack *boolStack, rec *fastjson.Value) {
-	val := lookupValue(rec, strings.Split(q.field, "."))
-	stack.Push(val != nil)
-}
-func (q rpnExistsQuery) String() string {
-	return fmt.Sprintf(`rpnExistsQuery{%s:*}`, q.field)
-}
-
-type rpnTermsQuery struct {
-	field    string
-	terms    []string
-	matchAll bool // Indicates all terms must match in an array field. E.g. `foo:(a and b and c)`.
-}
-
-func (q *rpnTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
-	// XXX HERE
-	// 		tail -1 ./demo.log | go run ./cmd/ecslog -q 'str:string'
-	// - start test cases for these
-	// - finish each of the types below
-	// - add wildcard support
-	// - move on to other types
-
-	// XXX test cases for the core fields that have been *extracted* from rec.
-	// 		 cat ./demo.log | go run ./cmd/ecslog -q 'log.level:info'
-	// 		Ugh. These are on the *Renderer*. ... so we need either:
-	// 		1. exec() to pass these values in, or
-	// 		2. do not extract these fields from rec. at least not yet.
-	// 		TODO: do NOT *extract* those fields until formatting (after kqlFiltering)
-	val := lookupValue(rec, strings.Split(q.field, "."))
-	if val == nil {
-		stack.Push(false)
-		return
-	}
-
-	// TODO: wildcard handling in terms
-	// TODO: wildcard handling in field!
-
-	// Example: `foo:(bar and baz)` is meant to assert that both "bar" and
-	// "baz" are present in the *array* "foo".
-	if q.matchAll {
-		if val.Type() != fastjson.TypeArray {
-			stack.Push(false)
-			return
-		}
-
-		// XXX continue this matching
-		stack.Push(false)
-		return
-	}
-
-	for _, term := range q.terms {
-		switch val.Type() {
-		case fastjson.TypeNull:
-			panic("XXX val null")
-		case fastjson.TypeObject:
-			panic("XXX val object")
-		case fastjson.TypeArray:
-			panic("XXX val array")
-		case fastjson.TypeString:
-			if doesTermMatchStringVal(term, val) {
-				stack.Push(true)
-				return
-			}
-		case fastjson.TypeNumber:
-			// XXX HERE
-			// - get term as float64
-			// if doesTermMatchNumberVal(term, val) {
-			// 	stack.Push(true)
-			// 	return
-			// }
-			panic("XXX val num")
-		case fastjson.TypeTrue:
-			panic("XXX val true")
-		case fastjson.TypeFalse:
-			panic("XXX val false")
-		}
-	}
-	stack.Push(false)
-}
-func (q rpnTermsQuery) String() string {
-	var s string
-	if q.matchAll {
-		s = fmt.Sprintf(`rpnTermsQuery{%s:("%s")}`, q.field, strings.Join(q.terms, `" and "`))
-	} else {
-		s = fmt.Sprintf(`rpnTermsQuery{%s:"%s"}`, q.field, strings.Join(q.terms, `" "`))
-	}
-	return s
-}
-
-// XXX move all the rpn* types out to a separate exec.go or something
-func doesTermMatchStringVal(term string, val *fastjson.Value) bool {
-	// TODO: support wildcard
-	return term == string(val.GetStringBytes())
-}
-
-// func doesTermMatchNumberVal(term string, val *fastjson.Value) bool {
-// 	termNum := XXX
-// }
-
-type rpnDefaultFieldsTermsQuery struct {
-	terms []string
-}
-
-func (q *rpnDefaultFieldsTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
-	//XXX impl lookup and compare
-	stack.Push(true)
-}
-func (q rpnDefaultFieldsTermsQuery) String() string {
-	return fmt.Sprintf(`rpnDefaultFieldsTermsQuery{"%s"}`, strings.Join(q.terms, `" "`))
-}
-
-type rpnGtRangeQuery struct {
-	field string
-	value string
-}
-
-func (q *rpnGtRangeQuery) exec(stack *boolStack, rec *fastjson.Value) {
-	//XXX impl lookup and compare
-	stack.Push(true)
-}
-func (q rpnGtRangeQuery) String() string {
-	return fmt.Sprintf(`rpnGtRangeQuery{%s > %s}`, q.field, q.value)
-}
-
-type rpnGteRangeQuery struct {
-	field string
-	value string
-}
-
-func (q *rpnGteRangeQuery) exec(stack *boolStack, rec *fastjson.Value) {
-	//XXX impl lookup and compare
-	stack.Push(true)
-}
-func (q rpnGteRangeQuery) String() string {
-	return fmt.Sprintf(`rpnGteRangeQuery{%s >= %s}`, q.field, q.value)
-}
-
-type rpnLtRangeQuery struct {
-	field string
-	value string
-}
-
-func (q *rpnLtRangeQuery) exec(stack *boolStack, rec *fastjson.Value) {
-	//XXX impl lookup and compare
-	stack.Push(true)
-}
-func (q rpnLtRangeQuery) String() string {
-	return fmt.Sprintf(`rpnLtRangeQuery{%s < %s}`, q.field, q.value)
-}
-
-type rpnLteRangeQuery struct {
-	field string
-	value string
-}
-
-func (q *rpnLteRangeQuery) exec(stack *boolStack, rec *fastjson.Value) {
-	//XXX impl lookup and compare
-	stack.Push(true)
-}
-func (q rpnLteRangeQuery) String() string {
-	return fmt.Sprintf(`rpnLteRangeQuery{%s <= %s}`, q.field, q.value)
-}
-
-type rpnAnd struct{}
-
-func (q *rpnAnd) exec(stack *boolStack, rec *fastjson.Value) {
-	a := stack.Pop()
-	b := stack.Pop()
-	stack.Push(a && b)
-}
-func (q rpnAnd) String() string {
-	return "rpnAnd{and}"
-}
-
-type rpnOr struct{}
-
-func (q *rpnOr) exec(stack *boolStack, rec *fastjson.Value) {
-	a := stack.Pop()
-	b := stack.Pop()
-	stack.Push(a || b)
-}
-func (q rpnOr) String() string {
-	return "rpnOr{or}"
-}
-
-type rpnNot struct{}
-
-func (q *rpnNot) exec(stack *boolStack, rec *fastjson.Value) {
-	stack.Push(!stack.Pop())
-}
-func (q rpnNot) String() string {
-	return "rpnNot{not}"
-}
-
-// rpnOpenParen is an rpnStep representing the start of a parenthesized group
-// on the `ops` stack during parsing. It is never intended to be on the Filter
-// steps to be `exec`d.
-type rpnOpenParen struct{}
-
-func (q *rpnOpenParen) exec(stack *boolStack, rec *fastjson.Value) {
-	panic("exec'ing a rpnOpenParen")
-}
-func (q rpnOpenParen) String() string {
-	return "rpnOpenParen{(}"
-}
+import (
+	"fmt"
+	"log"
+	"strings"
+)
 
 type parser struct {
-	kql              string // the KQL text being parsed
+	kql              string         // the KQL text being parsed
+	logLevelLess     LogLevelLessFn // an optional fn to special case "log.level" range queries
 	lex              *lexer
 	lookAheadTok     *token     // a lookahead token, if peek() or backup() was called
 	stagedOps        tokenStack // a stack of staged bool ops in increasing order of precedence (and open parens)
@@ -344,12 +131,19 @@ func parseRangeQuery(p *parser) parserStateFn {
 		var q rpnStep
 		switch opTok.typ {
 		case tokTypeGt:
-			q = &rpnGtRangeQuery{field: p.field.val, value: valTok.val}
+			q = &rpnGtRangeQuery{
+				field:        p.field.val,
+				term:         newTerm(valTok.val),
+				logLevelLess: p.logLevelLess,
+			}
 		case tokTypeGte:
+			// XXX
 			q = &rpnGteRangeQuery{field: p.field.val, value: valTok.val}
 		case tokTypeLt:
+			// XXX
 			q = &rpnLtRangeQuery{field: p.field.val, value: valTok.val}
 		case tokTypeLte:
+			// XXX
 			q = &rpnLteRangeQuery{field: p.field.val, value: valTok.val}
 		default:
 			log.Panicf("invalid opTok.typ=%v while parsing range query", opTok.typ)
@@ -369,13 +163,13 @@ func parseRangeQuery(p *parser) parserStateFn {
 // E.g.: `foo:value1 value2`, `foo:(a or b)`, `foo:(a and b and c)`, `foo:*`
 func parseTermsQuery(p *parser) parserStateFn {
 	p.next() // Consume the ':' token.
-	var terms []string
+	var terms []term
 	tok := p.next()
 	switch tok.typ {
 	case tokTypeUnquotedLiteral:
 		// E.g. `foo:val1 val2` or `foo:*`. If at least on of the terms is `*`,
 		// then this is an "exists query".
-		terms = append(terms, tok.val)
+		terms = append(terms, newTerm(tok.val))
 		haveExistsTerm := tok.val == "*"
 		for {
 			tok := p.peek()
@@ -383,7 +177,7 @@ func parseTermsQuery(p *parser) parserStateFn {
 				if tok.val == "*" {
 					haveExistsTerm = true
 				}
-				terms = append(terms, tok.val)
+				terms = append(terms, newTerm(tok.val))
 				p.next() // Consume the token.
 			} else {
 				break
@@ -410,7 +204,7 @@ func parseTermsQuery(p *parser) parserStateFn {
 			if termTok.typ != tokTypeUnquotedLiteral {
 				return p.errorfAt(termTok.pos, "expected literal, got %s", termTok.typ)
 			}
-			terms = append(terms, termTok.val)
+			terms = append(terms, newTerm(termTok.val))
 			if termTok.val == "*" {
 				haveExistsTerm = true
 			}
@@ -587,11 +381,12 @@ func (p *parser) parse() (*Filter, error) {
 	return p.filter, nil
 }
 
-func newParser(kql string) *parser {
+func newParser(kql string, loglevelLess LogLevelLessFn) *parser {
 	return &parser{
-		kql:       kql,
-		lex:       lex("NewFilter", kql),
-		stagedOps: make(tokenStack, 0),
-		filter:    &Filter{},
+		kql:          kql,
+		lex:          lex("NewFilter", kql),
+		stagedOps:    make(tokenStack, 0),
+		filter:       &Filter{},
+		logLevelLess: loglevelLess,
 	}
 }

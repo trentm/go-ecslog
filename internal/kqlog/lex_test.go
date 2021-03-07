@@ -1,15 +1,8 @@
 package kqlog
 
 import (
-	"fmt"
 	"testing"
 )
-
-// debugf prints debug output for this test run. Uncomment the fmt.Printf to
-// see it.
-func debugf(format string, args ...interface{}) {
-	fmt.Printf(format, args...)
-}
 
 type lexTestCase struct {
 	name   string
@@ -192,14 +185,16 @@ func equalTokens(i1, i2 []token, checkPos bool) bool {
 
 func TestLex(t *testing.T) {
 	for _, tc := range lexTestCases {
-		debugf("-- lex test case %q\n", tc.name)
-		debugf("  input: %#v\n", tc.input)
-		tokens := collectTokens(&tc)
-		debugf("  tokens:\n\t%#v\n\t%v\n", tokens, tokens)
-		if !equalTokens(tokens, tc.tokens, false) {
-			t.Errorf("%s: got\n\t%+v\nexpected\n\t%v\ninput\n\t%s",
-				tc.name, tokens, tc.tokens, tc.input)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			t.Logf("-- lex test case %q\n", tc.name)
+			t.Logf("  input: %#v\n", tc.input)
+			tokens := collectTokens(&tc)
+			t.Logf("  tokens:\n\t%#v\n\t%v\n", tokens, tokens)
+			if !equalTokens(tokens, tc.tokens, false) {
+				t.Errorf("%s: got\n\t%+v\nexpected\n\t%v\ninput\n\t%s",
+					tc.name, tokens, tc.tokens, tc.input)
+			}
+		})
 	}
 }
 

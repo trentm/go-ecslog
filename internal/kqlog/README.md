@@ -23,16 +23,16 @@ sometimes called "kuery" in code), with some tweaks for use in the
    on the command line are:
    - Range queries are allow on the string "log.level" field, e.g.
      `log.level >= "error"`. This uses the best-effort log level ordering
-     from `ecslog.ECSLevelLess`. (This special case is somewhat akin to special
+     from `ecslog.LogLevelLess`. (This special case is somewhat akin to special
      case range queries for dates.)
    - TODO: possibly something for "default" index fields for a bare `foo` query.
    - ...
-  - kqlog might support range queries on any strings, and just merge date
-    range queries in with that, because a log record doesn't know which
-    fields are dates (other than spec'd "@timestamp")
-  - kqlog might differ in "phrase matches". I'm not sure I can do that. I was
-    considering just doing quoted literals the same as unquoted except: (a)
-    allows spaces and special chars; and (b) implies a string type.
+   - kqlog might support range queries on any strings, and just merge date
+     range queries in with that, because a log record doesn't know which
+     fields are dates (other than spec'd "@timestamp")
+   - kqlog might differ in "phrase matches". I'm not sure I can do that. I was
+     considering just doing quoted literals the same as unquoted except: (a)
+     allows spaces and special chars; and (b) implies a string type.
 
 Open questions:
 

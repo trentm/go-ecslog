@@ -48,7 +48,7 @@ var parseTestCases = []parseTestCase{
 		"terms query",
 		"foo:bar",
 		&Filter{steps: []rpnStep{
-			&rpnTermsQuery{field: "foo", terms: []string{"bar"}},
+			&rpnTermsQuery{field: "foo", terms: []term{newTerm("bar")}},
 		}},
 		"",
 	},
@@ -56,7 +56,7 @@ var parseTestCases = []parseTestCase{
 		"terms query, multiple terms",
 		"foo:bar baz",
 		&Filter{steps: []rpnStep{
-			&rpnTermsQuery{field: "foo", terms: []string{"bar", "baz"}},
+			&rpnTermsQuery{field: "foo", terms: []term{newTerm("bar"), newTerm("baz")}},
 		}},
 		"",
 	},
@@ -104,31 +104,34 @@ func equalErrSubstr(err error, errSubstr string) bool {
 
 func TestParse(t *testing.T) {
 	for _, tc := range parseTestCases {
-		debugf("-- parse test case %q\n", tc.name)
-		debugf("  input: %#v\n", tc.input)
-		p := newParser(tc.input)
-		f, err := p.parse()
-		debugf("  filter steps:\n")
-		for _, s := range f.steps {
-			debugf("\t%s\n", s)
-		}
-		if !reflect.DeepEqual(f, tc.filter) {
-			t.Errorf("%s:\ninput:\n\t%s\ngot filter:\n\t%+v\nexpected filter:\n\t%+v\n",
-				tc.name, tc.input, f, tc.filter)
-		}
-		if !equalErrSubstr(err, tc.errSubstr) {
-			t.Errorf(
-				"%s:\n"+
-					"input:\n"+
-					"\t%s\n"+
-					"got error:\n"+
-					"\t%+v\n"+
-					"expected error with this substring:\n"+
-					"\t%v\n",
-				tc.name, tc.input, err, tc.errSubstr)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			t.Logf("-- parse test case %q\n", tc.name)
+			t.Logf("  input: %#v\n", tc.input)
+			// nil for logLevelLess arg because it isn't relevant for parsing.
+			p := newParser(tc.input, nil)
+			f, err := p.parse()
+			t.Logf("  filter steps:\n")
+			for _, s := range f.steps {
+				t.Logf("\t%s\n", s)
+			}
+			if !reflect.DeepEqual(f, tc.filter) {
+				t.Errorf("%s:\ninput:\n\t%s\ngot filter:\n\t%+v\nexpected filter:\n\t%+v\n",
+					tc.name, tc.input, f, tc.filter)
+			}
+			if !equalErrSubstr(err, tc.errSubstr) {
+				t.Errorf(
+					"%s:\n"+
+						"input:\n"+
+						"\t%s\n"+
+						"got error:\n"+
+						"\t%+v\n"+
+						"expected error with this substring:\n"+
+						"\t%v\n",
+					tc.name, tc.input, err, tc.errSubstr)
+			}
+		})
 	}
 }
 
-// // TODO: lexPosTests from go/src/text/template/parse/lex_test.go?
-// // TODO: TestShutdown from go/src/text/template/parse/lex_test.go?
+// TODO: lexPosTests from go/src/text/template/parse/lex_test.go?
+// TODO: TestShutdown from go/src/text/template/parse/lex_test.go?

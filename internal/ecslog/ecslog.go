@@ -32,7 +32,8 @@ type Renderer struct {
 	levelFilter string
 	kqlFilter   *kqlog.Filter
 
-	line      string // the raw input line
+	line string // the raw input line
+	// XXX maybe don't need these anymore
 	logLevel  string // extracted "log.level" for the current record
 	timestamp []byte // extracted "@timestamp" for the current record
 	message   []byte // extracted "message" for the current record
@@ -109,21 +110,19 @@ func (r *Renderer) SetLevelFilter(level string) {
 func (r *Renderer) SetKQLFilter(kql string) error {
 	var err error
 	if kql != "" {
-		r.kqlFilter, err = kqlog.NewFilter(kql)
+		r.kqlFilter, err = kqlog.NewFilter(kql, LogLevelLess)
 	}
 	return err
 }
 
 // levelValFromName is a best-effort ordering of levels in common usage in
-// logging frameworks that might be used in ECS format. See `ECSLevelLess`
+// logging frameworks that might be used in ECS format. See `LogLevelLess`
 // below. (The actual int values are only used internally and can change between
 // versions.)
 //
 // - zap: https://pkg.go.dev/go.uber.org/zap/#AtomicLevel.MarshalText
 // - bunyan: https://github.com/trentm/node-bunyan/tree/master/#levels
 // - ...
-// TODO: move the level order/filtering out to a separate package to be
-// usable by "kqlog". Update kqlog/README.md
 var levelValFromName = map[string]int{
 	"trace":   10,
 	"debug":   20,
@@ -136,14 +135,14 @@ var levelValFromName = map[string]int{
 	"fatal":   80,
 }
 
-// ECSLevelLess returns true iff level1 is less than level2.
+// LogLevelLess returns true iff level1 is less than level2.
 //
 // Because ECS doesn't mandate a set of log level names for the "log.level"
 // field, nor any specific ordering of those log levels, this is a best
 // effort based on names and ordering from common logging frameworks.
 // If a level name is unknown, this returns false. Level names are considered
 // case-insensitive.
-func ECSLevelLess(level1, level2 string) bool {
+func LogLevelLess(level1, level2 string) bool {
 	val1, ok := levelValFromName[strings.ToLower(level1)]
 	if !ok {
 		return false
@@ -247,7 +246,7 @@ func (r *Renderer) RenderFile(f *os.File) error {
 		r.line = line
 
 		// `--level info` will drop any log records less than log.level=info.
-		if r.levelFilter != "" && ECSLevelLess(r.logLevel, r.levelFilter) {
+		if r.levelFilter != "" && LogLevelLess(r.logLevel, r.levelFilter) {
 			continue
 		}
 

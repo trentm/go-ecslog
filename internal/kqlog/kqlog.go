@@ -18,6 +18,10 @@ import (
 	"github.com/valyala/fastjson"
 )
 
+// LogLevelLessFn is a function type used by range queries for special case
+// comparison of the "log.level" field.
+type LogLevelLessFn func(level1, level2 string) bool
+
 // Filter ... TODO:doc
 type Filter struct {
 	steps []rpnStep
@@ -59,14 +63,14 @@ func (f Filter) String() string {
 
 // Match returns true iff the given record matches the KQL filter.
 func (f *Filter) Match(rec *fastjson.Value) bool {
-	// log.Printf("-- Match with filter: %s", f)
+	// log.Printf("-- Match with filter: %s", f) // XXX
 	if len(f.steps) == 0 {
 		return true
 	}
 	stack := make(boolStack, 0, len(f.steps)/2+1)
 	for _, step := range f.steps {
 		step.exec(&stack, rec)
-		// log.Printf("  %35s -> %v\n", step, stack)
+		// log.Printf("  %35s -> %v\n", step, stack) // XXX
 	}
 	if len(stack) != 1 {
 		log.Panicf("invalid KQL execution: stack length is not 1: %#v", stack)
@@ -75,8 +79,8 @@ func (f *Filter) Match(rec *fastjson.Value) bool {
 }
 
 // NewFilter ... TODO:doc
-func NewFilter(kql string) (*Filter, error) {
-	p := newParser(kql)
+func NewFilter(kql string, logLevelLess LogLevelLessFn) (*Filter, error) {
+	p := newParser(kql, logLevelLess)
 	f, err := p.parse()
 	if err != nil {
 		return nil, err
