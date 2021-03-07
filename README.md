@@ -83,3 +83,16 @@ elide some fields, typically for compactness.
 - "http": A lossless format similar to "default", but attempts to render
   HTTP-related ECS fields in HTTP request and response text representation.
   TODO: not yet implemented.
+
+
+# Troubleshooting
+
+`ecslog --self-debug ...` will log some limited internal debugging information.
+This is on stderr and is itself in ecs-logging format, so one can append the
+following to include rendered ecslog self-debugging inline:
+
+    --self-debug 2>&1 | ecslog
+
+For example:
+
+    ecslog ... my-log-file.log --self-debug 2>&1 | ecslog

@@ -17,6 +17,7 @@
 - `-x, --elide-fields' or something to remote from rendering
   Matching to *include* only given fields? Is this only about "extra" fields?
 - get examples from the other ecs-loggers, esp. zap has some differences
+- bug: crash on gargantuan string in a single record (details on other computer I think)
 
 # mvp
 

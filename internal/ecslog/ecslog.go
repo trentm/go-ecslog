@@ -3,6 +3,7 @@ package ecslog
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -24,7 +25,7 @@ const maxLineLen = 16384
 
 // Renderer is the class used to drive ECS log rendering (aka pretty printing).
 type Renderer struct {
-	Log         *zap.Logger // singleton internal logger for an `ecslog` run
+	lg          *zap.Logger // singleton internal logger for an `ecslog` run
 	parser      fastjson.Parser
 	painter     *ansipainter.ANSIPainter
 	formatName  string
@@ -47,7 +48,7 @@ type Renderer struct {
 //   is a TTY), "yes", or "no"
 // - `colorScheme` is the name of one of the colors schemes in
 //   ansipainter.PainterFromName
-func NewRenderer(logger *zap.Logger, shouldColorize, colorScheme, formatName string) (*Renderer, error) {
+func NewRenderer(lg *zap.Logger, shouldColorize, colorScheme, formatName string) (*Renderer, error) {
 	// Get appropriate "painter" for terminal coloring.
 	var painter *ansipainter.ANSIPainter
 	if shouldColorize == "auto" {
@@ -87,12 +88,12 @@ func NewRenderer(logger *zap.Logger, shouldColorize, colorScheme, formatName str
 			formatName, strings.Join(known, ", "))
 	}
 
-	logger.Debug("create renderer",
+	lg.Debug("create renderer",
 		zap.String("formatName", formatName),
 		zap.String("shouldColorize", shouldColorize),
 		zap.String("colorScheme", colorScheme))
 	return &Renderer{
-		Log:        logger,
+		lg:         lg,
 		painter:    painter,
 		formatName: formatName,
 		formatter:  formatter,
@@ -219,28 +220,28 @@ func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
 	return true
 }
 
-// RenderFile renders log records in the given open file stream.
-func (r *Renderer) RenderFile(f *os.File) error {
+// RenderFile renders log records from the given open file stream to the given
+// output stream (typically os.Stdout).
+func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 	var b strings.Builder
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(in)
 	for scanner.Scan() {
 		// TODO perf: use scanner.Bytes https://golang.org/pkg/bufio/#Scanner.Bytes
 		line := scanner.Text()
-		// TODO: allow leading whitespace
 		if len(line) > maxLineLen || len(line) == 0 || line[0] != '{' {
-			fmt.Println(line)
+			fmt.Fprintln(out, line)
 			continue
 		}
 
 		rec, err := r.parser.Parse(line)
 		if err != nil {
-			r.Log.Debug("line parse error", zap.Error(err))
-			fmt.Println(line)
+			r.lg.Debug("line parse error", zap.Error(err))
+			fmt.Fprintln(out, line)
 			continue
 		}
 
 		if !r.isECSLoggingRecord(rec) {
-			fmt.Println(line)
+			fmt.Fprintln(out, line)
 			continue
 		}
 		r.line = line
@@ -255,7 +256,7 @@ func (r *Renderer) RenderFile(f *os.File) error {
 		}
 
 		r.formatter.formatRecord(r, rec, &b)
-		fmt.Println(b.String())
+		fmt.Fprintln(out, b.String())
 		b.Reset()
 	}
 	return scanner.Err()

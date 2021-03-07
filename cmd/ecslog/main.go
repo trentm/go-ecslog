@@ -101,7 +101,7 @@ func main() {
 		logLevel = zap.DebugLevel
 	}
 	core := ecszap.NewCore(encoderConfig, os.Stderr, logLevel)
-	logger := zap.New(core, zap.AddCaller()).Named("ecslog")
+	lg := zap.New(core, zap.AddCaller()).Named("ecslog")
 
 	shouldColorize := "auto"
 	if *flagColor && *flagNoColor {
@@ -114,7 +114,7 @@ func main() {
 		shouldColorize = "no"
 	}
 
-	r, err := ecslog.NewRenderer(logger, shouldColorize, *flagColorScheme, *flagFormatName)
+	r, err := ecslog.NewRenderer(lg, shouldColorize, *flagColorScheme, *flagFormatName)
 	if err != nil {
 		printError(err.Error())
 		printUsage()
@@ -131,7 +131,7 @@ func main() {
 
 	if len(flags.Args()) == 0 {
 		f = os.Stdin
-		err = r.RenderFile(f)
+		err = r.RenderFile(f, os.Stdout)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -142,10 +142,11 @@ func main() {
 				errs = append(errs, err)
 				continue
 			}
-			err = r.RenderFile(f)
+			err = r.RenderFile(f, os.Stdout)
 			if err != nil {
 				errs = append(errs, err)
 			}
+			f.Close()
 		}
 	}
 
