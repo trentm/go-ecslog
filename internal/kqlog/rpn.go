@@ -176,8 +176,8 @@ func (q *rpnGtRangeQuery) exec(stack *boolStack, rec *fastjson.Value) {
 	case fastjson.TypeNumber:
 		numVal, ok := q.term.GetNumVal()
 		if !ok {
-			// rec: {"foo": 42}
-			// range query: `foo > bar`
+			// For example, matching `foo > bar` ("bar" does not have a number
+			// value) against record `{"foo": 42}`.
 			log.Printf("XXX How does Kibana handle KQL range query comparing string and number? `%s` -> %s > %s\n", q, fieldVal, q.term)
 			stack.Push(false)
 		} else {
