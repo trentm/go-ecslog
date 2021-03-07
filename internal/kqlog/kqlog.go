@@ -27,19 +27,18 @@ type Filter struct {
 	steps []rpnStep
 }
 
-// add appends a step to the filter.
-// XXX s/add/addStep/
-func (f *Filter) add(s rpnStep) {
+// addStep appends a step to the filter.
+func (f *Filter) addStep(s rpnStep) {
 	f.steps = append(f.steps, s)
 }
 func (f *Filter) addBoolOp(t token) {
 	switch t.typ {
 	case tokTypeAnd:
-		f.add(&rpnAnd{})
+		f.addStep(&rpnAnd{})
 	case tokTypeOr:
-		f.add(&rpnOr{})
+		f.addStep(&rpnOr{})
 	case tokTypeNot:
-		f.add(&rpnNot{})
+		f.addStep(&rpnNot{})
 	default:
 		log.Panicf("token is not a bool op token: %s", t.typ)
 	}

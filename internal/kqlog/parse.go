@@ -148,7 +148,7 @@ func parseRangeQuery(p *parser) parserStateFn {
 		default:
 			log.Panicf("invalid opTok.typ=%v while parsing range query", opTok.typ)
 		}
-		p.filter.add(q)
+		p.filter.addStep(q)
 		p.field = nil
 		return parseAfterQuery
 	default:
@@ -184,9 +184,9 @@ func parseTermsQuery(p *parser) parserStateFn {
 			}
 		}
 		if haveExistsTerm {
-			p.filter.add(&rpnExistsQuery{field: p.field.val})
+			p.filter.addStep(&rpnExistsQuery{field: p.field.val})
 		} else {
-			p.filter.add(&rpnTermsQuery{field: p.field.val, terms: terms})
+			p.filter.addStep(&rpnTermsQuery{field: p.field.val, terms: terms})
 		}
 		p.field = nil
 		return parseAfterQuery
@@ -215,9 +215,9 @@ func parseTermsQuery(p *parser) parserStateFn {
 				if haveExistsTerm {
 					// For now, treating `*` literal in these forms as an
 					// exists query. TODO: verify against kuery.peg.
-					p.filter.add(&rpnExistsQuery{field: p.field.val})
+					p.filter.addStep(&rpnExistsQuery{field: p.field.val})
 				} else {
-					p.filter.add(&rpnTermsQuery{field: p.field.val, terms: terms, matchAll: matchAll})
+					p.filter.addStep(&rpnTermsQuery{field: p.field.val, terms: terms, matchAll: matchAll})
 				}
 				p.field = nil
 				return parseAfterQuery
@@ -362,7 +362,7 @@ func parseBeforeQuery(p *parser) parserStateFn {
 				}
 			}
 			p.backup(termTok)
-			p.filter.add(&rpnDefaultFieldsTermsQuery{terms: terms})
+			p.filter.addStep(&rpnDefaultFieldsTermsQuery{terms: terms})
 			return parseAfterQuery
 		}
 	default:

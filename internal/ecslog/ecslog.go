@@ -1,5 +1,7 @@
 package ecslog
 
+// Shared stuff for `ecslog` that isn't specific to the CLI.
+
 import (
 	"bufio"
 	"fmt"
@@ -15,8 +17,6 @@ import (
 	"github.com/valyala/fastjson"
 	"go.uber.org/zap"
 )
-
-// Shared stuff for `ecslog` that isn't specific to the CLI.
 
 // Version is the semver version of this tool.
 const Version = "0.0.0"

@@ -6,10 +6,6 @@
     ecslog: error: bufio.Scanner: token too long
   The log line had a huge "message" field... so need a guard on each field size.
   https://stackoverflow.com/questions/21124327 suggests "bufio.Reader.ReadLine"
-- this:
-    cat ./demo.log | go run ./cmd/ecslog -q 'num > 4 and log.level > debug'
-  stop removal of the core fields until later
-    - s/dottedGetBytes/ExtractValue
 - kqlog
   - impl all the rpnAction exec funcs
   - type handling for exec
