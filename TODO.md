@@ -14,6 +14,7 @@
   Matching to *include* only given fields? Is this only about "extra" fields?
 - get examples from the other ecs-loggers, esp. zap has some differences
 - bug: crash on gargantuan string in a single record (details on other computer I think)
+- config via github.com/BurntSushi/toml ?
 
 # mvp
 

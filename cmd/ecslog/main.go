@@ -8,8 +8,6 @@ import (
 	"os"
 
 	"github.com/spf13/pflag"
-	"go.elastic.co/ecszap"
-	"go.uber.org/zap"
 
 	"github.com/trentm/go-ecslog/internal/ecslog"
 )
@@ -93,16 +91,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Setup logging.
-	// https://www.elastic.co/guide/en/ecs-logging/go-zap/current/setup.html
-	encoderConfig := ecszap.NewDefaultEncoderConfig()
-	logLevel := zap.FatalLevel
-	if *flagSelfDebug {
-		logLevel = zap.DebugLevel
-	}
-	core := ecszap.NewCore(encoderConfig, os.Stderr, logLevel)
-	lg := zap.New(core, zap.AddCaller()).Named("ecslog")
-
 	shouldColorize := "auto"
 	if *flagColor && *flagNoColor {
 		printError("cannot specify both --color and --no-color")
@@ -114,7 +102,7 @@ func main() {
 		shouldColorize = "no"
 	}
 
-	r, err := ecslog.NewRenderer(lg, shouldColorize, *flagColorScheme, *flagFormatName)
+	r, err := ecslog.NewRenderer(shouldColorize, *flagColorScheme, *flagFormatName)
 	if err != nil {
 		printError(err.Error())
 		printUsage()

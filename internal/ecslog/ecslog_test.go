@@ -7,8 +7,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/trentm/go-ecslog/internal/ecslog"
-	"go.elastic.co/ecszap"
-	"go.uber.org/zap"
 )
 
 type renderFileTestCase struct {
@@ -80,22 +78,12 @@ var renderFileTestCases = []renderFileTestCase{
 	},
 }
 
-// createTestLogger creates a zap logger required for using Renderer.
-// It is set to the "fatal" level to silence logging output.
-func createTestLogger() *zap.Logger {
-	encoderConfig := ecszap.NewDefaultEncoderConfig()
-	core := ecszap.NewCore(encoderConfig, os.Stderr, zap.FatalLevel)
-	lg := zap.New(core, zap.AddCaller()).Named("ecslog")
-	return lg
-}
-
 func TestRenderFile(t *testing.T) {
-	lg := createTestLogger()
 	for _, tc := range renderFileTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			r, err := ecslog.NewRenderer(lg, tc.shouldColorize, tc.colorScheme, tc.formatName)
+			r, err := ecslog.NewRenderer(tc.shouldColorize, tc.colorScheme, tc.formatName)
 			if err != nil {
-				t.Errorf("ecslog.NewRenderer(lg, %q, %q, %q) error: %s",
+				t.Errorf("ecslog.NewRenderer(%q, %q, %q) error: %s",
 					tc.shouldColorize, tc.colorScheme, tc.formatName, err)
 				return
 			}

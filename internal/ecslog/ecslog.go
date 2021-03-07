@@ -14,8 +14,8 @@ import (
 	"github.com/trentm/go-ecslog/internal/ansipainter"
 	"github.com/trentm/go-ecslog/internal/jsonutils"
 	"github.com/trentm/go-ecslog/internal/kqlog"
+	"github.com/trentm/go-ecslog/internal/lg"
 	"github.com/valyala/fastjson"
-	"go.uber.org/zap"
 )
 
 // Version is the semver version of this tool.
@@ -26,7 +26,6 @@ const maxLineLen = 16384
 
 // Renderer is the class used to drive ECS log rendering (aka pretty printing).
 type Renderer struct {
-	lg          *zap.Logger // singleton internal logger for an `ecslog` run
 	parser      fastjson.Parser
 	painter     *ansipainter.ANSIPainter
 	formatName  string
@@ -46,7 +45,7 @@ type Renderer struct {
 //   is a TTY), "yes", or "no"
 // - `colorScheme` is the name of one of the colors schemes in
 //   ansipainter.PainterFromName
-func NewRenderer(lg *zap.Logger, shouldColorize, colorScheme, formatName string) (*Renderer, error) {
+func NewRenderer(shouldColorize, colorScheme, formatName string) (*Renderer, error) {
 	// Get appropriate "painter" for terminal coloring.
 	var painter *ansipainter.ANSIPainter
 	if shouldColorize == "auto" {
@@ -86,12 +85,9 @@ func NewRenderer(lg *zap.Logger, shouldColorize, colorScheme, formatName string)
 			formatName, strings.Join(known, ", "))
 	}
 
-	lg.Debug("create renderer",
-		zap.String("formatName", formatName),
-		zap.String("shouldColorize", shouldColorize),
-		zap.String("colorScheme", colorScheme))
+	lg.Printf("create renderer: formatName=%q, shouldColorize=%q, colorScheme=%q\n",
+		formatName, shouldColorize, colorScheme)
 	return &Renderer{
-		lg:         lg,
 		painter:    painter,
 		formatName: formatName,
 		formatter:  formatter,
@@ -198,7 +194,7 @@ func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 
 		rec, err := r.parser.Parse(line)
 		if err != nil {
-			r.lg.Debug("line parse error", zap.Error(err))
+			lg.Printf("line parse error: %s\n", err)
 			fmt.Fprintln(out, line)
 			continue
 		}

@@ -15,6 +15,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/trentm/go-ecslog/internal/lg"
 	"github.com/valyala/fastjson"
 )
 
@@ -62,14 +63,14 @@ func (f Filter) String() string {
 
 // Match returns true iff the given record matches the KQL filter.
 func (f *Filter) Match(rec *fastjson.Value) bool {
-	// log.Printf("-- Match with filter: %s", f) // XXX
+	lg.Printf("-- Match with filter: %s", f)
 	if len(f.steps) == 0 {
 		return true
 	}
 	stack := make(boolStack, 0, len(f.steps)/2+1)
 	for _, step := range f.steps {
 		step.exec(&stack, rec)
-		// log.Printf("  %35s -> %v\n", step, stack) // XXX
+		lg.Printf("  %35s -> %v\n", step, stack)
 	}
 	if len(stack) != 1 {
 		log.Panicf("invalid KQL execution: stack length is not 1: %#v", stack)
