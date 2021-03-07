@@ -9,10 +9,10 @@ package kqlog
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/trentm/go-ecslog/internal/jsonutils"
+	"github.com/trentm/go-ecslog/internal/lg"
 	"github.com/valyala/fastjson"
 )
 
@@ -58,7 +58,7 @@ func (q *rpnTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
 			return
 		}
 
-		log.Printf("XXX rpnTermsQuery matchAll NYI\n")
+		lg.Printf("XXX rpnTermsQuery matchAll NYI\n")
 		stack.Push(false)
 		return
 	}
@@ -130,7 +130,7 @@ type rpnDefaultFieldsTermsQuery struct {
 }
 
 func (q *rpnDefaultFieldsTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
-	log.Println("XXX rpnDefaultFieldsTermsQuery NYI: what are the typical default fields for logs in Kibana?")
+	lg.Println("XXX rpnDefaultFieldsTermsQuery NYI: what are the typical default fields for logs in Kibana?")
 	stack.Push(false)
 }
 func (q rpnDefaultFieldsTermsQuery) String() string {
@@ -163,13 +163,13 @@ func (q *rpnGtRangeQuery) exec(stack *boolStack, rec *fastjson.Value) {
 
 	switch fieldVal.Type() {
 	case fastjson.TypeNull:
-		log.Printf("XXX How does Kibana handle KQL range query with null? `%s` -> %s > %s\n", q, fieldVal, q.term)
+		lg.Printf("Q: How does Kibana handle KQL range query with null? `%s` -> %s > %s\n", q, fieldVal, q.term)
 		stack.Push(false)
 	case fastjson.TypeObject:
-		log.Printf("XXX How does Kibana handle KQL range query with object? `%s` -> %s > %s\n", q, fieldVal, q.term)
+		lg.Printf("Q: How does Kibana handle KQL range query with object? `%s` -> %s > %s\n", q, fieldVal, q.term)
 		stack.Push(false)
 	case fastjson.TypeArray:
-		log.Printf("XXX How does Kibana handle KQL range query with array? `%s` -> %s > %s\n", q, fieldVal, q.term)
+		lg.Printf("Q: How does Kibana handle KQL range query with array? `%s` -> %s > %s\n", q, fieldVal, q.term)
 		stack.Push(false)
 	case fastjson.TypeString:
 		stack.Push(string(fieldVal.GetStringBytes()) > q.term.Val)
@@ -178,16 +178,16 @@ func (q *rpnGtRangeQuery) exec(stack *boolStack, rec *fastjson.Value) {
 		if !ok {
 			// For example, matching `foo > bar` ("bar" does not have a number
 			// value) against record `{"foo": 42}`.
-			log.Printf("XXX How does Kibana handle KQL range query comparing string and number? `%s` -> %s > %s\n", q, fieldVal, q.term)
+			lg.Printf("Q: How does Kibana handle KQL range query comparing string and number? `%s` -> %s > %s\n", q, fieldVal, q.term)
 			stack.Push(false)
 		} else {
 			stack.Push(fieldVal.GetFloat64() > numVal)
 		}
 	case fastjson.TypeTrue:
-		log.Printf("XXX How does Kibana handle KQL range query with bool? `%s` -> %s > %s\n", q, fieldVal, q.term)
+		lg.Printf("Q: How does Kibana handle KQL range query with bool? `%s` -> %s > %s\n", q, fieldVal, q.term)
 		stack.Push(false)
 	case fastjson.TypeFalse:
-		log.Printf("XXX How does Kibana handle KQL range query with bool? `%s` -> %s > %s\n", q, fieldVal, q.term)
+		lg.Printf("Q: How does Kibana handle KQL range query with bool? `%s` -> %s > %s\n", q, fieldVal, q.term)
 		stack.Push(false)
 	}
 }
