@@ -12,7 +12,6 @@ package kqlog
 //     }
 
 import (
-	"log"
 	"strings"
 
 	"github.com/trentm/go-ecslog/internal/lg"
@@ -41,7 +40,7 @@ func (f *Filter) addBoolOp(t token) {
 	case tokTypeNot:
 		f.addStep(&rpnNot{})
 	default:
-		log.Panicf("token is not a bool op token: %s", t.typ)
+		lg.Fatalf("token is not a bool op token: %s", t.typ)
 	}
 }
 
@@ -73,7 +72,7 @@ func (f *Filter) Match(rec *fastjson.Value) bool {
 		lg.Printf("  %35s -> %v\n", step, stack)
 	}
 	if len(stack) != 1 {
-		log.Panicf("invalid KQL execution: stack length is not 1: %#v", stack)
+		lg.Fatalf("invalid KQL execution: stack length is not 1: %#v", stack)
 	}
 	return stack.Pop()
 }

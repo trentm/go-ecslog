@@ -15,8 +15,9 @@ package kqlog
 
 import (
 	"fmt"
-	"log"
 	"strings"
+
+	"github.com/trentm/go-ecslog/internal/lg"
 )
 
 type parser struct {
@@ -146,7 +147,7 @@ func parseRangeQuery(p *parser) parserStateFn {
 			// XXX
 			q = &rpnLteRangeQuery{field: p.field.val, value: valTok.val}
 		default:
-			log.Panicf("invalid opTok.typ=%v while parsing range query", opTok.typ)
+			lg.Fatalf("invalid opTok.typ=%v while parsing range query", opTok.typ)
 		}
 		p.filter.addStep(q)
 		p.field = nil
@@ -293,7 +294,7 @@ func parseAfterQuery(p *parser) parserStateFn {
 func parseEOFTok(p *parser) parserStateFn {
 	tok := p.next()
 	if tok.typ != tokTypeEOF {
-		log.Panicf("parseEOFTok called with token other than EOF: '%s'", tok.typ)
+		lg.Fatalf("parseEOFTok called with token other than EOF: '%s'", tok.typ)
 	}
 	if p.incompleteBoolOp {
 		// E.g.: "foo and"

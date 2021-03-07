@@ -50,7 +50,6 @@ func LookupValue(obj *fastjson.Value, lookup []string) *fastjson.Value {
 	for i := 1; i <= len(lookup); i++ {
 		key = strings.Join(lookup[:i], ".")
 		val = LookupValue(o.Get(key), lookup[i:])
-		// log.Printf("XXX i=%d < %d: o[%q] = %#v\n", i, len(lookup), key, val)
 		if val != nil {
 			return val
 		}

@@ -2,7 +2,6 @@ package ecslog_test
 
 import (
 	"bytes"
-	"os"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"

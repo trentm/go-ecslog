@@ -3,11 +3,11 @@ package ecslog
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/trentm/go-ecslog/internal/ansipainter"
 	"github.com/trentm/go-ecslog/internal/jsonutils"
+	"github.com/trentm/go-ecslog/internal/lg"
 	"github.com/valyala/fastjson"
 )
 
@@ -232,7 +232,7 @@ func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 		b.WriteString(v.String())
 		painter.Reset(b)
 	default:
-		log.Fatalf("unexpected JSON type: %s", v.Type())
+		lg.Fatalf("unexpected JSON type: %s", v.Type())
 	}
 }
 
