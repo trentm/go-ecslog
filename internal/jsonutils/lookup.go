@@ -8,8 +8,6 @@ import (
 	"github.com/valyala/fastjson"
 )
 
-// XXX change signature of these to take `lookup ...string`, move typ before lookup
-
 // LookupValue looks up the JSON value identified by object property names in
 // `lookup`.
 //
@@ -23,7 +21,7 @@ import (
 //    lookup: [foo, bar]
 // In this case, the result is unspecified. *One* of the paths will win.
 //
-func LookupValue(obj *fastjson.Value, lookup []string) *fastjson.Value {
+func LookupValue(obj *fastjson.Value, lookup ...string) *fastjson.Value {
 	if obj == nil {
 		return nil
 	} else if len(lookup) == 0 {
@@ -42,14 +40,14 @@ func LookupValue(obj *fastjson.Value, lookup []string) *fastjson.Value {
 	// Otherwise, we have multiple lookup names.
 	//
 	// E.g.: Given: lookup=["a", "b", "c"]
-	// first try:   LookupValue(obj["a"], ["b", "c"])
-	// then try:    LookupValue(obj["a.b"], ["c"])
-	// then try:    LookupValue(obj["a.b.c"], [])
+	// first try:   LookupValue(obj["a"], "b", "c")
+	// then try:    LookupValue(obj["a.b"], "c")
+	// then try:    LookupValue(obj["a.b.c"])
 	var val *fastjson.Value
 	var key string
 	for i := 1; i <= len(lookup); i++ {
 		key = strings.Join(lookup[:i], ".")
-		val = LookupValue(o.Get(key), lookup[i:])
+		val = LookupValue(o.Get(key), lookup[i:]...)
 		if val != nil {
 			return val
 		}
@@ -63,7 +61,7 @@ func LookupValue(obj *fastjson.Value, lookup []string) *fastjson.Value {
 // the object. If removing that property results in any empty object, then
 // that object is removed as well -- except the top-level object is not
 // changed to nil.
-func ExtractValue(obj *fastjson.Value, lookup []string) *fastjson.Value {
+func ExtractValue(obj *fastjson.Value, lookup ...string) *fastjson.Value {
 	var val *fastjson.Value
 	var key string
 
@@ -89,13 +87,13 @@ func ExtractValue(obj *fastjson.Value, lookup []string) *fastjson.Value {
 	// Otherwise, we have multiple lookup names.
 	//
 	// E.g.: Given: lookup=["a", "b", "c"]
-	// first try:   ExtractValue(obj["a"], ["b", "c"])
-	// then try:    ExtractValue(obj["a.b"], ["c"])
-	// then try:    ExtractValue(obj["a.b.c"], [])
+	// first try:   ExtractValue(obj["a"], "b", "c")
+	// then try:    ExtractValue(obj["a.b"], "c")
+	// then try:    ExtractValue(obj["a.b.c"])
 	for i := 1; i <= len(lookup); i++ {
 		key = strings.Join(lookup[:i], ".")
 		subO := o.Get(key)
-		val = ExtractValue(subO, lookup[i:])
+		val = ExtractValue(subO, lookup[i:]...)
 		if val != nil {
 			if i == len(lookup) {
 				// The value is a property of `o`, e.g. a lookup of "a.b.c"
@@ -113,7 +111,7 @@ func ExtractValue(obj *fastjson.Value, lookup []string) *fastjson.Value {
 
 // ExtractValueOfType is a version of ExtractValue that only considers the
 // value a match if it is of the given type.
-func ExtractValueOfType(obj *fastjson.Value, lookup []string, typ fastjson.Type) *fastjson.Value {
+func ExtractValueOfType(obj *fastjson.Value, typ fastjson.Type, lookup ...string) *fastjson.Value {
 	var val *fastjson.Value
 	var key string
 
@@ -143,13 +141,13 @@ func ExtractValueOfType(obj *fastjson.Value, lookup []string, typ fastjson.Type)
 	// Otherwise, we have multiple lookup names.
 	//
 	// E.g.: Given: lookup=["a", "b", "c"]
-	// first try:   ExtractValueOfType(obj["a"], ["b", "c"])
-	// then try:    ExtractValueOfType(obj["a.b"], ["c"])
-	// then try:    ExtractValueOfType(obj["a.b.c"], [])
+	// first try:   ExtractValueOfType(obj["a"], typ, "b", "c")
+	// then try:    ExtractValueOfType(obj["a.b"], typ, "c")
+	// then try:    ExtractValueOfType(obj["a.b.c"], typ)
 	for i := 1; i <= len(lookup); i++ {
 		key = strings.Join(lookup[:i], ".")
 		subO := o.Get(key)
-		val = ExtractValueOfType(subO, lookup[i:], typ)
+		val = ExtractValueOfType(subO, typ, lookup[i:]...)
 		if val != nil {
 			if i == len(lookup) {
 				// The value is a property of `o`, e.g. a lookup of "a.b.c"

@@ -19,8 +19,8 @@ type Formatter interface {
 type defaultFormatter struct{}
 
 func (f *defaultFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
-	jsonutils.ExtractValue(rec, []string{"ecs", "version"})
-	jsonutils.ExtractValue(rec, []string{"log", "level"})
+	jsonutils.ExtractValue(rec, "ecs", "version")
+	jsonutils.ExtractValue(rec, "log", "level")
 	formatDefaultTitleLine(r, rec, b)
 
 	// Render the remaining fields:
@@ -44,8 +44,8 @@ func (f *defaultFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 type compactFormatter struct{}
 
 func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
-	jsonutils.ExtractValue(rec, []string{"ecs", "version"})
-	jsonutils.ExtractValue(rec, []string{"log", "level"})
+	jsonutils.ExtractValue(rec, "ecs", "version")
+	jsonutils.ExtractValue(rec, "log", "level")
 
 	formatDefaultTitleLine(r, rec, b)
 
@@ -85,20 +85,20 @@ func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
 	var val *fastjson.Value
 	var logLogger []byte
-	if val = jsonutils.ExtractValueOfType(rec, []string{"log", "logger"}, fastjson.TypeString); val != nil {
+	if val = jsonutils.ExtractValueOfType(rec, fastjson.TypeString, "log", "logger"); val != nil {
 		logLogger = val.GetStringBytes()
 	}
 	var serviceName []byte
-	if val = jsonutils.ExtractValueOfType(rec, []string{"service", "name"}, fastjson.TypeString); val != nil {
+	if val = jsonutils.ExtractValueOfType(rec, fastjson.TypeString, "service", "name"); val != nil {
 		serviceName = val.GetStringBytes()
 	}
 	var hostHostname []byte
-	if val = jsonutils.ExtractValueOfType(rec, []string{"host", "hostname"}, fastjson.TypeString); val != nil {
+	if val = jsonutils.ExtractValueOfType(rec, fastjson.TypeString, "host", "hostname"); val != nil {
 		hostHostname = val.GetStringBytes()
 	}
 
-	timestamp := jsonutils.ExtractValue(rec, []string{"@timestamp"}).GetStringBytes()
-	message := jsonutils.ExtractValue(rec, []string{"message"}).GetStringBytes()
+	timestamp := jsonutils.ExtractValue(rec, "@timestamp").GetStringBytes()
+	message := jsonutils.ExtractValue(rec, "message").GetStringBytes()
 
 	// Title line pattern:
 	//
@@ -250,9 +250,9 @@ func (f *ecsFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings
 type simpleFormatter struct{}
 
 func (f *simpleFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
-	jsonutils.ExtractValue(rec, []string{"ecs", "version"})
-	jsonutils.ExtractValue(rec, []string{"log", "level"})
-	message := jsonutils.ExtractValue(rec, []string{"message"}).GetStringBytes()
+	jsonutils.ExtractValue(rec, "ecs", "version")
+	jsonutils.ExtractValue(rec, "log", "level")
+	message := jsonutils.ExtractValue(rec, "message").GetStringBytes()
 
 	r.painter.Paint(b, r.logLevel)
 	fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))

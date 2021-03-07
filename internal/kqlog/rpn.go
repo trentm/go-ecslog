@@ -27,7 +27,7 @@ type rpnExistsQuery struct {
 }
 
 func (q *rpnExistsQuery) exec(stack *boolStack, rec *fastjson.Value) {
-	val := jsonutils.LookupValue(rec, strings.Split(q.field, "."))
+	val := jsonutils.LookupValue(rec, strings.Split(q.field, ".")...)
 	stack.Push(val != nil)
 }
 func (q rpnExistsQuery) String() string {
@@ -41,7 +41,7 @@ type rpnTermsQuery struct {
 }
 
 func (q *rpnTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
-	fieldVal := jsonutils.LookupValue(rec, strings.Split(q.field, "."))
+	fieldVal := jsonutils.LookupValue(rec, strings.Split(q.field, ".")...)
 	if fieldVal == nil {
 		stack.Push(false)
 		return
@@ -144,7 +144,7 @@ type rpnGtRangeQuery struct {
 }
 
 func (q *rpnGtRangeQuery) exec(stack *boolStack, rec *fastjson.Value) {
-	fieldVal := jsonutils.LookupValue(rec, strings.Split(q.field, "."))
+	fieldVal := jsonutils.LookupValue(rec, strings.Split(q.field, ".")...)
 	if fieldVal == nil {
 		stack.Push(false)
 		return

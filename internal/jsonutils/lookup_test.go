@@ -172,7 +172,7 @@ func TestLookupValue(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("  obj: %s\n", tc.obj)
 			t.Logf("  lookup: %s\n", tc.lookup)
-			val := LookupValue(tc.obj, tc.lookup)
+			val := LookupValue(tc.obj, tc.lookup...)
 			t.Logf("  val: %s\n", val)
 			if !equalVal(val, tc.val) {
 				t.Errorf(
@@ -200,7 +200,7 @@ func TestExtractValue(t *testing.T) {
 				objReprBefore = tc.obj.String()
 			}
 			t.Logf("  lookup: %s\n", tc.lookup)
-			val := ExtractValue(tc.obj, tc.lookup)
+			val := ExtractValue(tc.obj, tc.lookup...)
 			t.Logf("  val: %v\n", val)
 			t.Logf("  obj (after): %v\n", tc.obj)
 			if !equalVal(val, tc.val) {

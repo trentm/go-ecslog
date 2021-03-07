@@ -165,12 +165,12 @@ func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
 		return false
 	}
 
-	ecsVersion := jsonutils.LookupValue(rec, []string{"ecs", "version"})
+	ecsVersion := jsonutils.LookupValue(rec, "ecs", "version")
 	if ecsVersion == nil || ecsVersion.Type() != fastjson.TypeString {
 		return false
 	}
 
-	logLevel := jsonutils.LookupValue(rec, []string{"log", "level"})
+	logLevel := jsonutils.LookupValue(rec, "log", "level")
 	if logLevel == nil || logLevel.Type() != fastjson.TypeString {
 		return false
 	}
