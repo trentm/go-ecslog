@@ -138,14 +138,23 @@ func parseRangeQuery(p *parser) parserStateFn {
 				logLevelLess: p.logLevelLess,
 			}
 		case tokTypeGte:
-			// XXX
-			q = &rpnGteRangeQuery{field: p.field.val, value: valTok.val}
+			q = &rpnGteRangeQuery{
+				field:        p.field.val,
+				term:         newTerm(valTok.val),
+				logLevelLess: p.logLevelLess,
+			}
 		case tokTypeLt:
-			// XXX
-			q = &rpnLtRangeQuery{field: p.field.val, value: valTok.val}
+			q = &rpnLtRangeQuery{
+				field:        p.field.val,
+				term:         newTerm(valTok.val),
+				logLevelLess: p.logLevelLess,
+			}
 		case tokTypeLte:
-			// XXX
-			q = &rpnLteRangeQuery{field: p.field.val, value: valTok.val}
+			q = &rpnLteRangeQuery{
+				field:        p.field.val,
+				term:         newTerm(valTok.val),
+				logLevelLess: p.logLevelLess,
+			}
 		default:
 			lg.Fatalf("invalid opTok.typ=%v while parsing range query", opTok.typ)
 		}

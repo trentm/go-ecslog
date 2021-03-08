@@ -161,6 +161,7 @@ var matchTestCases = []matchTestCase{
 		"foo.0:bar",
 		false,
 	},
+
 	// Range queries
 	{
 		"range query: gt",
@@ -207,6 +208,145 @@ var matchTestCases = []matchTestCase{
 		"log.level > error",
 		false,
 	},
+
+	{
+		"range query: gte",
+		fastjson.MustParse(`{"foo": 2}`),
+		"foo >= 2.0",
+		true,
+	},
+	{
+		"range query: gte, false",
+		fastjson.MustParse(`{"foo": 2}`),
+		"foo >= 2.5",
+		false,
+	},
+	{
+		"range query: gte, no spaces",
+		fastjson.MustParse(`{"foo": 2}`),
+		"foo>=1",
+		true,
+	},
+	{
+		"range query: gte, strings 1",
+		fastjson.MustParse(`{"foo": "bar"}`),
+		"foo >= baa",
+		true,
+	},
+	{
+		"range query: gte, strings 2",
+		fastjson.MustParse(`{"foo": "bar"}`),
+		"foo >= bar",
+		true,
+	},
+	{
+		"range query: gte, log.level special casing 1",
+		// Intentionally pick a comparison where regular string comparison
+		// would fail. I.e. we are relying on the expected ordering from the
+		// given `LogLevelLessFn`.
+		fastjson.MustParse(`{"log.level": "error"}`),
+		"log.level >= info",
+		true,
+	},
+	{
+		"range query: gte, log.level special casing 2",
+		fastjson.MustParse(`{"log.level": "error"}`),
+		"log.level >= error",
+		true,
+	},
+
+	{
+		"range query: lt",
+		fastjson.MustParse(`{"foo": 2}`),
+		"foo < 3",
+		true,
+	},
+	{
+		"range query: lt, false",
+		fastjson.MustParse(`{"foo": 2}`),
+		"foo < 2",
+		false,
+	},
+	{
+		"range query: lt, no spaces",
+		fastjson.MustParse(`{"foo": 2}`),
+		"foo<3",
+		true,
+	},
+	{
+		"range query: lt, strings 1",
+		fastjson.MustParse(`{"foo": "bar"}`),
+		"foo < baz",
+		true,
+	},
+	{
+		"range query: lt, strings 2",
+		fastjson.MustParse(`{"foo": "bar"}`),
+		"foo < bar",
+		false,
+	},
+	{
+		"range query: lt, log.level special casing 1",
+		// Intentionally pick a comparison where regular string comparison
+		// would fail. I.e. we are relying on the expected ordering from the
+		// given `LogLevelLessFn`.
+		fastjson.MustParse(`{"log.level": "trace"}`),
+		"log.level < info",
+		true,
+	},
+	{
+		"range query: lt, log.level special casing 2",
+		fastjson.MustParse(`{"log.level": "error"}`),
+		"log.level < error",
+		false,
+	},
+
+	{
+		"range query: lte",
+		fastjson.MustParse(`{"foo": 2}`),
+		"foo <= 2",
+		true,
+	},
+	{
+		"range query: lte, false",
+		fastjson.MustParse(`{"foo": 2}`),
+		"foo <= 1",
+		false,
+	},
+	{
+		"range query: lte, no spaces",
+		fastjson.MustParse(`{"foo": 2}`),
+		"foo<=2.5",
+		true,
+	},
+	{
+		"range query: lte, strings 1",
+		fastjson.MustParse(`{"foo": "bar"}`),
+		"foo <= baz",
+		true,
+	},
+	{
+		"range query: lte, strings 2",
+		fastjson.MustParse(`{"foo": "bar"}`),
+		"foo <= bar",
+		true,
+	},
+	{
+		"range query: lte, log.level special casing 1",
+		// Intentionally pick a comparison where regular string comparison
+		// would fail. I.e. we are relying on the expected ordering from the
+		// given `LogLevelLessFn`.
+		fastjson.MustParse(`{"log.level": "trace"}`),
+		"log.level <= info",
+		true,
+	},
+	{
+		"range query: lte, log.level special casing 2",
+		fastjson.MustParse(`{"log.level": "error"}`),
+		"log.level <= error",
+		true,
+	},
+
 	// TODO: moar tests
 }
 
