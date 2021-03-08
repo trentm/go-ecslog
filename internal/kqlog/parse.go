@@ -224,10 +224,13 @@ func parseTermsQuery(p *parser) parserStateFn {
 			case tokTypeCloseParen:
 				if haveExistsTerm {
 					// For now, treating `*` literal in these forms as an
-					// exists query. TODO: verify against kuery.peg.
+					// exists query.
+					// TODO: verify against kuery.peg, I'm not so sure about this
 					p.filter.addStep(&rpnExistsQuery{field: p.field.val})
+				} else if matchAll {
+					p.filter.addStep(&rpnMatchAllTermsQuery{field: p.field.val, terms: terms})
 				} else {
-					p.filter.addStep(&rpnTermsQuery{field: p.field.val, terms: terms, matchAll: matchAll})
+					p.filter.addStep(&rpnTermsQuery{field: p.field.val, terms: terms})
 				}
 				p.field = nil
 				return parseAfterQuery

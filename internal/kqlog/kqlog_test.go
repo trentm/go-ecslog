@@ -20,6 +20,7 @@ var matchTestCases = []matchTestCase{
 		"",
 		true,
 	},
+
 	// Exists queries
 	{
 		"exists query",
@@ -33,6 +34,7 @@ var matchTestCases = []matchTestCase{
 		"baz:*",
 		false,
 	},
+
 	// Terms queries
 	{
 		"terms query",
@@ -143,6 +145,7 @@ var matchTestCases = []matchTestCase{
 		"foo:bar blah null",
 		true,
 	},
+
 	{
 		"terms query: object match",
 		fastjson.MustParse(`{"foo": {"bar": "baz"}}`),
@@ -159,6 +162,36 @@ var matchTestCases = []matchTestCase{
 		"terms query: no array index lookups",
 		fastjson.MustParse(`{"foo": ["bar", 2]}`),
 		"foo.0:bar",
+		false,
+	},
+
+	// "matchAll" terms queries, e.g. `foo:(bar and baz)` which
+	// https://www.elastic.co/guide/en/kibana/current/kuery-query.html
+	// describes as:
+	// > To match multi-value fields that contain a list of terms:
+	// > tags:(success and info and security)
+	{
+		"matchAll terms query: yep",
+		fastjson.MustParse(`{"tags": ["a", "success", "security", "b", "info"]}`),
+		"tags:(success and info and security)",
+		true,
+	},
+	{
+		"matchAll terms query: nope",
+		fastjson.MustParse(`{"tags": ["a", "success", "b", "info"]}`),
+		"tags:(success and info and security)",
+		false,
+	},
+	{
+		"matchAll terms query: yep, mixed types",
+		fastjson.MustParse(`{"foo": ["one", 2, "three", 42]}`),
+		"foo:(one and 42)",
+		true,
+	},
+	{
+		"matchAll terms query: non-array",
+		fastjson.MustParse(`{"foo": "bar"}`),
+		"foo:(bar and baz)",
 		false,
 	},
 

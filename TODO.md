@@ -7,7 +7,7 @@
   The log line had a huge "message" field... so need a guard on each field size.
   https://stackoverflow.com/questions/21124327 suggests "bufio.Reader.ReadLine"
 - kqlog
-  - impl all the rpnAction exec funcs
+  - XXXs and TODOs in rpn.go
   - type handling for exec
   - quoted literals
 - `-x, --elide-fields' or something to remote from rendering

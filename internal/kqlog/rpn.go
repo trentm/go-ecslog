@@ -35,9 +35,8 @@ func (q rpnExistsQuery) String() string {
 }
 
 type rpnTermsQuery struct {
-	field    string
-	terms    []term
-	matchAll bool // Indicates all terms must match in an array field. E.g. `foo:(a and b and c)`.
+	field string
+	terms []term
 }
 
 func (q *rpnTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
@@ -49,19 +48,6 @@ func (q *rpnTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
 
 	// TODO: wildcard handling in terms
 	// TODO: wildcard handling in field!
-
-	// Example: `foo:(bar and baz)` is meant to assert that both "bar" and
-	// "baz" are present in the *array* "foo".
-	if q.matchAll {
-		if fieldVal.Type() != fastjson.TypeArray {
-			stack.Push(false)
-			return
-		}
-
-		lg.Printf("XXX rpnTermsQuery matchAll NYI\n")
-		stack.Push(false)
-		return
-	}
 
 	for _, t := range q.terms {
 		switch fieldVal.Type() {
@@ -107,17 +93,93 @@ func (q *rpnTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
 }
 
 func (q rpnTermsQuery) String() string {
-	var s string
 	var termStrs []string
 	for _, t := range q.terms {
 		termStrs = append(termStrs, t.Val)
 	}
-	if q.matchAll {
-		s = fmt.Sprintf(`rpnTermsQuery{%s:("%s")}`, q.field, strings.Join(termStrs, `" and "`))
-	} else {
-		s = fmt.Sprintf(`rpnTermsQuery{%s:"%s"}`, q.field, strings.Join(termStrs, `" "`))
+	return fmt.Sprintf(`rpnTermsQuery{%s:"%s"}`, q.field, strings.Join(termStrs, `" "`))
+}
+
+// Example: `foo:(bar and baz)` is meant to assert that both "bar" and
+// "baz" are present in the *array* "foo". At least that is my read of the
+// single example at
+// https://www.elastic.co/guide/en/kibana/current/kuery-query.html
+type rpnMatchAllTermsQuery struct {
+	field string
+	terms []term
+}
+
+func (q *rpnMatchAllTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
+	fieldVal := jsonutils.LookupValue(rec, strings.Split(q.field, ".")...)
+	if fieldVal == nil {
+		stack.Push(false)
+		return
 	}
-	return s
+	if fieldVal.Type() != fastjson.TypeArray {
+		stack.Push(false)
+		return
+	}
+
+	// TODO: wildcard handling in terms
+	// TODO: wildcard handling in field!
+
+	// For example
+	// - record:   {"foo": ["one", 2, "three", 42]}
+	// - KQL:      foo:(one and 42)
+	// - q.terms:  "one", 42
+	// - fieldVal: ["one", 2, "three", 42]
+	for _, t := range q.terms {
+		// Is term t in the array?
+		found := false
+	FieldArrayLoop:
+		for _, itemVal := range fieldVal.GetArray() {
+			switch itemVal.Type() {
+			case fastjson.TypeNull:
+				if t.Val == "null" {
+					found = true
+					break FieldArrayLoop
+				}
+			case fastjson.TypeString:
+				if doesTermMatchStringVal(t, itemVal) {
+					found = true
+					break FieldArrayLoop
+				}
+			case fastjson.TypeNumber:
+				numVal, ok := t.GetNumVal()
+				if ok && numVal == itemVal.GetFloat64() {
+					found = true
+					break FieldArrayLoop
+				}
+			case fastjson.TypeTrue:
+				boolVal, ok := t.GetBoolVal()
+				if ok && boolVal == true {
+					found = true
+					break FieldArrayLoop
+				}
+			case fastjson.TypeFalse:
+				boolVal, ok := t.GetBoolVal()
+				if ok && boolVal == false {
+					found = true
+					break FieldArrayLoop
+				}
+			}
+		}
+		if !found {
+			stack.Push(false)
+			return
+		}
+	}
+
+	// If we made it here, then all terms were `found` in the array.
+	stack.Push(true)
+}
+
+func (q rpnMatchAllTermsQuery) String() string {
+	var termStrs []string
+	for _, t := range q.terms {
+		termStrs = append(termStrs, t.Val)
+	}
+	return fmt.Sprintf(`rpnTermsQuery{%s:("%s")}`, q.field, strings.Join(termStrs, `" and "`))
 }
 
 func doesTermMatchStringVal(t term, val *fastjson.Value) bool {
