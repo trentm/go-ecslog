@@ -3,7 +3,7 @@
 all: ecslog
 
 # Limitation: this doesn't catch all deps
-ecslog: cmd/ecslog/*.go
+ecslog: cmd/ecslog/*.go internal/*/*.go
 	go build ./cmd/ecslog
 
 .PHONY: run

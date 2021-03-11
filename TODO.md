@@ -1,5 +1,11 @@
 # top
 
+- crash bug: Using this in apm-nodejs-http-client (using pino):
+        this._log.warn('uncork (from _corkTimer): state=%j', this._writableState)
+  generated a HUGE line that resulted in:
+    ecslog: error: bufio.Scanner: token too long
+  The log line had a huge "message" field... so need a guard on each field size.
+  https://stackoverflow.com/questions/21124327 suggests "bufio.Reader.ReadLine"
 - better lookup that handles arbitrary dotted fields
 
 # mvp
