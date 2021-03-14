@@ -54,6 +54,45 @@ var matchTestCases = []matchTestCase{
 		"foo: bar baz",
 		true,
 	},
+
+	{
+		"terms query: wildcard 1",
+		fastjson.MustParse(`{"foo": "bar"}`),
+		"foo:ba*",
+		true,
+	},
+	{
+		"terms query: wildcard 2",
+		fastjson.MustParse(`{"foo": "bbbbar"}`),
+		"foo:*ar",
+		true,
+	},
+	{
+		"terms query: wildcard 3",
+		fastjson.MustParse(`{"foo": "bart"}`),
+		"foo:*a*",
+		true,
+	},
+	{
+		"terms query: wildcard 4",
+		fastjson.MustParse(`{"foo": "baz"}`),
+		"foo:*ar",
+		false,
+	},
+	{
+		"terms query: wildcard 5",
+		fastjson.MustParse(`{"foo": "baz"}`),
+		"foo:*ar ba*",
+		true,
+	},
+
+	{
+		"terms query: wildcard test anchoring",
+		fastjson.MustParse(`{"foo": "BEFOREbazAFTER"}`),
+		"foo:b*z",
+		false,
+	},
+
 	{
 		"terms query: bool match 1",
 		fastjson.MustParse(`{"foo": true}`),
@@ -193,6 +232,12 @@ var matchTestCases = []matchTestCase{
 		fastjson.MustParse(`{"foo": "bar"}`),
 		"foo:(bar and baz)",
 		false,
+	},
+	{
+		"matchAll terms query: yep, wildcard",
+		fastjson.MustParse(`{"foo": ["one", "two", "three", "four"]}`),
+		"foo:(one and th*)",
+		true,
 	},
 
 	// Range queries

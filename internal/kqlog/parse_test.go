@@ -53,10 +53,54 @@ var parseTestCases = []parseTestCase{
 		"",
 	},
 	{
-		"terms query, multiple terms",
+		"terms query: multiple terms",
 		"foo:bar baz",
 		&Filter{steps: []rpnStep{
 			&rpnTermsQuery{field: "foo", terms: []term{newTerm("bar"), newTerm("baz")}},
+		}},
+		"",
+	},
+
+	// Match all terms queries
+	{
+		"match all terms query",
+		"foo:(bar and baz)",
+		&Filter{steps: []rpnStep{
+			&rpnMatchAllTermsQuery{field: "foo", terms: []term{newTerm("bar"), newTerm("baz")}},
+		}},
+		"",
+	},
+
+	// Wildcard term queries
+	{
+		"wildcard term 1",
+		"foo:ba*",
+		&Filter{steps: []rpnStep{
+			&rpnTermsQuery{field: "foo", terms: []term{newTerm("ba*")}},
+		}},
+		"",
+	},
+	{
+		"wildcard term 2",
+		"foo:b\\ta*",
+		&Filter{steps: []rpnStep{
+			&rpnTermsQuery{field: "foo", terms: []term{newTerm("b\ta*")}},
+		}},
+		"",
+	},
+	{
+		"wildcard term with escaped and unescaped asterisks",
+		"foo:f\\*\\*k*",
+		&Filter{steps: []rpnStep{
+			&rpnTermsQuery{field: "foo", terms: []term{newTerm("f\\*\\*k*")}},
+		}},
+		"",
+	},
+	{
+		"match all terms query with wildcard",
+		"foo:(bar and *az)",
+		&Filter{steps: []rpnStep{
+			&rpnMatchAllTermsQuery{field: "foo", terms: []term{newTerm("bar"), newTerm("*az")}},
 		}},
 		"",
 	},
@@ -115,7 +159,14 @@ func TestParse(t *testing.T) {
 				t.Logf("\t%s\n", s)
 			}
 			if !reflect.DeepEqual(f, tc.filter) {
-				t.Errorf("%s:\ninput:\n\t%s\ngot filter:\n\t%+v\nexpected filter:\n\t%+v\n",
+				t.Errorf(
+					"%s:\n"+
+						"input:\n"+
+						"\t%s\n"+
+						"got filter:\n"+
+						"\t%v\n"+
+						"expected filter:\n"+
+						"\t%v\n",
 					tc.name, tc.input, f, tc.filter)
 			}
 			if !equalErrSubstr(err, tc.errSubstr) {

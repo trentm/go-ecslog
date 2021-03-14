@@ -148,6 +148,27 @@ var lexTestCases = []lexTestCase{
 	// 	tokEOF,
 	// }},
 
+	// Escapes
+	// TODO: a lot more here, so far these are just feeling escaping out
+	{"escapes: colon", "foo:bar\\:", []token{
+		mkToken(tokTypeUnquotedLiteral, "foo"),
+		tokColon,
+		mkToken(tokTypeUnquotedLiteral, "bar\\:"),
+		tokEOF,
+	}},
+	{"escapes: escaped operator", "foo:bar \\and", []token{
+		mkToken(tokTypeUnquotedLiteral, "foo"),
+		tokColon,
+		mkToken(tokTypeUnquotedLiteral, "bar"),
+		mkToken(tokTypeUnquotedLiteral, "\\and"),
+		tokEOF,
+	}},
+	{"escapes: invalid end in backslash", "foo:bar\\", []token{
+		mkToken(tokTypeUnquotedLiteral, "foo"),
+		tokColon,
+		mkToken(tokTypeError, "unterminated character escape"),
+	}},
+
 	// TODO: add "escaping" test cases from kibana/src/plugins/data/common/es_query/kuery/ast/ast.test.ts
 	// TODO: test each of the errorf cases in lex.go
 }

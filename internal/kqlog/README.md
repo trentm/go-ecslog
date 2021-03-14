@@ -40,13 +40,25 @@ Open questions:
   How do these differ? Why support the second syntax?
 - Kibana KQL docs mention a "phrase match" when using double-quotes, e.g.
   `a.field.name:"this is my phrase"`. What does that "phrase match" imply.
+- The KQL user guide doc section on wildcards gives this example for a wildcard
+  in the field name:
+    > To match multiple fields:
+    >
+    > machine.os\*:windows 10
+    >
+    > This syntax is handy when you have text and keyword versions of a field.
+    > The query checks machine.os and machine.os.keyword for the term `windows
+    > 10`.
+  Is the intent to match *any* keys with the prefix "machine.os", e.g.
+  "machine.oscon", "machine.os.foo.bar.baz", etc.?
 - "A terms query of multiple values in a list type" e.g.: `a.field.name:(val1 and val2)`
   Is it the "and" that distinquishes from the "(200 or 404)" example above?
   Can there by single entry with parens, e.g. `foo:(val1)`?
   Is that meant to be distinct from `foo:val1`? Or do both of those mean a
   match for an array where one of the entries is "val1"?
 - For a "date range query", e.g. `@timestamp < "2021-02"`, does this value need
-  to be quoted?
+  to be quoted? I think the answer is *no*, but a time value with a colon *may*
+  need to be quoted.
 - For data range queries, if I did string range comparison, will I screw up
   TZ things? E.g. if @timestamp has a TZ -- which I believe the go ecs-logging
   libs might do, e.g. ecszap.

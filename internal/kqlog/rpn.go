@@ -65,7 +65,7 @@ func (q *rpnTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
 			stack.Push(false)
 			return
 		case fastjson.TypeString:
-			if doesTermMatchStringVal(t, fieldVal) {
+			if t.MatchStringBytes(fieldVal.GetStringBytes()) {
 				stack.Push(true)
 				return
 			}
@@ -95,9 +95,9 @@ func (q *rpnTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
 func (q rpnTermsQuery) String() string {
 	var termStrs []string
 	for _, t := range q.terms {
-		termStrs = append(termStrs, t.Val)
+		termStrs = append(termStrs, t.String())
 	}
-	return fmt.Sprintf(`rpnTermsQuery{%s:"%s"}`, q.field, strings.Join(termStrs, `" "`))
+	return fmt.Sprintf(`rpnTermsQuery{%s:%s}`, q.field, strings.Join(termStrs, " "))
 }
 
 // Example: `foo:(bar and baz)` is meant to assert that both "bar" and
@@ -120,7 +120,6 @@ func (q *rpnMatchAllTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
 		return
 	}
 
-	// TODO: wildcard handling in terms
 	// TODO: wildcard handling in field!
 
 	// For example
@@ -140,7 +139,7 @@ func (q *rpnMatchAllTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
 					break FieldArrayLoop
 				}
 			case fastjson.TypeString:
-				if doesTermMatchStringVal(t, itemVal) {
+				if t.MatchStringBytes(itemVal.GetStringBytes()) {
 					found = true
 					break FieldArrayLoop
 				}
@@ -177,17 +176,13 @@ func (q *rpnMatchAllTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
 func (q rpnMatchAllTermsQuery) String() string {
 	var termStrs []string
 	for _, t := range q.terms {
-		termStrs = append(termStrs, t.Val)
+		termStrs = append(termStrs, t.String())
 	}
-	return fmt.Sprintf(`rpnTermsQuery{%s:("%s")}`, q.field, strings.Join(termStrs, `" and "`))
-}
-
-func doesTermMatchStringVal(t term, val *fastjson.Value) bool {
-	// XXX: support wildcard
-	return t.Val == string(val.GetStringBytes())
+	return fmt.Sprintf(`rpnTermsQuery{%s:(%s)}`, q.field, strings.Join(termStrs, ` and `))
 }
 
 type rpnDefaultFieldsTermsQuery struct {
+	// XXX array of *term*
 	terms []string
 }
 
@@ -196,6 +191,7 @@ func (q *rpnDefaultFieldsTermsQuery) exec(stack *boolStack, rec *fastjson.Value)
 	stack.Push(false)
 }
 func (q rpnDefaultFieldsTermsQuery) String() string {
+	// XXX update when switch to term
 	return fmt.Sprintf(`rpnDefaultFieldsTermsQuery{"%s"}`, strings.Join(q.terms, `" "`))
 }
 

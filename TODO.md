@@ -8,13 +8,16 @@
   https://stackoverflow.com/questions/21124327 suggests "bufio.Reader.ReadLine"
 - kqlog
   - XXXs and TODOs in rpn.go
-  - type handling for exec
+  - wildcards in field: I'm not clear exactly what this should mean. In KQL
+    doc example "machine.os*" is to match "machine.os" and "machine.os.keyword".
+    That's not appropriate for us.
   - quoted literals
 - `-x, --elide-fields' or something to remote from rendering
   Matching to *include* only given fields? Is this only about "extra" fields?
 - get examples from the other ecs-loggers, esp. zap has some differences
 - bug: crash on gargantuan string in a single record (details on other computer I think)
 - config via github.com/BurntSushi/toml ?
+- clear out all panic()s and probably lo?g.Fatal()s. Perhaps remove from 'lg' pkg
 
 # mvp
 
@@ -35,9 +38,10 @@
   - be resilient with type-errors and dotted-name collisions in other fields
     (i.e. don't want to spend time for full schema validation)
   - examples from all the ecs-logging libs
-- [ ] more robust dotted lookup
+- [x] more robust dotted lookup
 - [ ] bug reporting facility on crash? Not sure we can with golang. Could just
-  be a `--bug` CLI and github issue template with commands to gather.
+  be a `--bug` CLI and github issue template with commands to gather and
+  `ESLOG_DEBUG` advice.
 - [ ] handle all `lg.Printf("Q: ...")` and `XXX` and `TODO` in the code
 
 # docs

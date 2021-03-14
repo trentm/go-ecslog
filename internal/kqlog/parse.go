@@ -118,9 +118,9 @@ func parseErrorTok(p *parser) parserStateFn {
 	return p.errorfAt(tok.pos, "%s", tok.val)
 }
 
-// parseRangeQuery parses one of the range queries. `p.field` holds the field
-// name token, and the next token is already checked to be one of the range
-// operator token types (e.g. tokTypeGt).
+// parseRangeQuery parses one of the range queries, e.g. `foo > 42`.
+// `p.field` holds the field name token, and the next token is already checked
+// to be one of the range operator token types (e.g. tokTypeGt).
 func parseRangeQuery(p *parser) parserStateFn {
 	opTok := p.next() // Already checked to be the range operator token.
 	valTok := p.next()
@@ -129,30 +129,34 @@ func parseRangeQuery(p *parser) parserStateFn {
 		p.backup(valTok)
 		return parseErrorTok
 	case tokTypeUnquotedLiteral:
+		trm := newTerm(valTok.val)
+		if trm.Wildcard {
+			return p.errorfAt(valTok.pos, "cannot have a wildcard in range query token")
+		}
 		var q rpnStep
 		switch opTok.typ {
 		case tokTypeGt:
 			q = &rpnGtRangeQuery{
 				field:        p.field.val,
-				term:         newTerm(valTok.val),
+				term:         trm,
 				logLevelLess: p.logLevelLess,
 			}
 		case tokTypeGte:
 			q = &rpnGteRangeQuery{
 				field:        p.field.val,
-				term:         newTerm(valTok.val),
+				term:         trm,
 				logLevelLess: p.logLevelLess,
 			}
 		case tokTypeLt:
 			q = &rpnLtRangeQuery{
 				field:        p.field.val,
-				term:         newTerm(valTok.val),
+				term:         trm,
 				logLevelLess: p.logLevelLess,
 			}
 		case tokTypeLte:
 			q = &rpnLteRangeQuery{
 				field:        p.field.val,
-				term:         newTerm(valTok.val),
+				term:         trm,
 				logLevelLess: p.logLevelLess,
 			}
 		default:
@@ -173,12 +177,13 @@ func parseRangeQuery(p *parser) parserStateFn {
 // E.g.: `foo:value1 value2`, `foo:(a or b)`, `foo:(a and b and c)`, `foo:*`
 func parseTermsQuery(p *parser) parserStateFn {
 	p.next() // Consume the ':' token.
+
 	var terms []term
 	tok := p.next()
 	switch tok.typ {
 	case tokTypeUnquotedLiteral:
-		// E.g. `foo:val1 val2` or `foo:*`. If at least on of the terms is `*`,
-		// then this is an "exists query".
+		// E.g. `foo:val1 val2`, `breakfast:*am eggs` or `foo:*`.
+		// If at least one of the terms is `*`, then this is an "exists query".
 		terms = append(terms, newTerm(tok.val))
 		haveExistsTerm := tok.val == "*"
 		for {
@@ -225,7 +230,7 @@ func parseTermsQuery(p *parser) parserStateFn {
 				if haveExistsTerm {
 					// For now, treating `*` literal in these forms as an
 					// exists query.
-					// TODO: verify against kuery.peg, I'm not so sure about this
+					// TODO: Verify against kuery.peg, I'm not so sure about this.
 					p.filter.addStep(&rpnExistsQuery{field: p.field.val})
 				} else if matchAll {
 					p.filter.addStep(&rpnMatchAllTermsQuery{field: p.field.val, terms: terms})

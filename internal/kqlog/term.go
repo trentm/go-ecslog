@@ -1,12 +1,19 @@
 package kqlog
 
-import "strconv"
+import (
+	"fmt"
+	"regexp"
+	"strconv"
+	"strings"
+
+	"github.com/trentm/go-ecslog/internal/lg"
+)
 
 // term represents a term in a parsed KQL filter expression.
 //
 // In a KQL like "username:bob anne and status_code >= 500 and audit:true",
 // all of "bob", "anne", "500" and "true" are terms (used in the `rpn*` structs
-// below).
+// in rpn.go).
 //
 // A KQL query is typically matched against many log records. When being
 // compared against a number or a boolean value in a log record, the term
@@ -14,17 +21,31 @@ import "strconv"
 // repeatedly doing that for each log record, those attempted conversions
 // are cached here.
 type term struct {
-	Val        string  // the raw string from the KQL
-	numParsed  bool    // Has an attempt been made to parse the term as a num?
-	numOk      bool    // Is the term a valid number?
-	numVal     float64 // the term as a number
-	boolParsed bool    // Has an attempt been made to parse the term as a bool?
-	boolOk     bool    // Is the term a valid bool?
-	boolVal    bool    // the term as a bool
+	Val        string         // the raw string from the KQL
+	Wildcard   bool           // Are there one or more `*` in Val that represent wildcards?
+	regexpVal  *regexp.Regexp // the compiled regex of Val, iff Wildcard=true
+	numParsed  bool           // Has an attempt been made to parse the term as a num?
+	numOk      bool           // Is the term a valid number?
+	numVal     float64        // the term as a number
+	boolParsed bool           // Has an attempt been made to parse the term as a bool?
+	boolOk     bool           // Is the term a valid bool?
+	boolVal    bool           // the term as a bool
 }
 
 func (t term) String() string {
-	return t.Val
+	if t.Wildcard {
+		return fmt.Sprintf("term{%q, Wildcard:%v}", t.Val, t.Wildcard)
+	}
+	return fmt.Sprintf("term{%q}", t.Val)
+}
+
+// MatchStringBytes returns true iff the term matches the given byte slice.
+func (t *term) MatchStringBytes(b []byte) bool {
+	if t.Wildcard {
+		return t.regexpVal.Match(b)
+	} else {
+		return t.Val == string(b)
+	}
 }
 
 // GetBoolVal returns a boolean value for this term, if possible.
@@ -64,6 +85,114 @@ func (t *term) GetNumVal() (numVal float64, ok bool) {
 	return t.numVal, t.numOk
 }
 
+// newTerm handles creating a `term` used for comparison in queries.
+//
+// It handles escaping rules in quoted strings and unquoted literals as defined
+// by the `Literal` production in:
+// https://github.com/elastic/kibana/blob/e2abb03ad03d27dcbe0a36964ea78a4361c038da/src/plugins/data/common/es_query/kuery/ast/kuery.peg#L212-L290
+// See some test cases here:
+// https://github.com/elastic/kibana/blob/e2abb03ad03d27dcbe0a36964ea78a4361c038da/src/plugins/data/common/es_query/kuery/ast/ast.test.ts#L316-L333
+//
+// If quoted, there can be backslash escaping for:
+// - whitespace: `\t`, `\n`, `\r`
+// - double-quotes: `\"`
+// If unquoted, an asterisk is a wildcard, and there can be backslash escaping for:
+// - whitespace: `\t`, `\n`, `\r`
+// - special characters: `\\`, `\(`, `\)`, `\:`, `\<`, `\>`, `\"`, `\{`, `\}`
+// - keywords: `\and`, `\or`, `\not`
+// XXX func newTerm(val string, quoted bool) term {
 func newTerm(val string) term {
-	return term{Val: val}
+	quoted := false // XXX take arg when quoted strings are supported
+
+	whitespaceFromEscapeChar := map[byte]byte{
+		'n': '\n',
+		't': '\t',
+		'r': '\r',
+	}
+	unquotedSpecialChars := map[byte]bool{
+		'\\': true,
+		'(':  true,
+		')':  true,
+		':':  true,
+		'<':  true,
+		'>':  true,
+		'"':  true,
+		'*':  true,
+		'{':  true,
+		'}':  true,
+	}
+
+	isWildcard := false
+	var b strings.Builder
+
+	if quoted {
+		// Handle escapes.
+		panic("XXX NYI")
+	} else {
+		// If the unescaped `*` wildcard char is found, then Val is the regexp
+		// pattern, and Wildcard is set true.
+		// TODO: I'm curious if KQL handles the case of a term with both a
+		// unescaped and an escaped asterisk: `foo*bar\*`.
+		var chunk strings.Builder
+		var ch byte
+		i := 0
+		// A byte loop suffices here because all KQL metacharacters are ASCII.
+		for i < len(val) {
+			ch = val[i]
+			if ch == '\\' {
+				if i+1 >= len(val) {
+					// In normal parsing, this is caught by the lexer. However,
+					// guard against direct `newTerm("foo\\")` calls.
+					lg.Fatalf("term ends in unescaped backslash (\\): %q", val)
+				}
+				// See if escaping whitespace, special char, or keyword.
+				nextCh := val[i+1]
+				if ws, ok := whitespaceFromEscapeChar[nextCh]; ok {
+					chunk.WriteByte(ws)
+					i++
+				} else if _, ok := unquotedSpecialChars[nextCh]; ok {
+					chunk.WriteByte(nextCh)
+					i++
+				} else if i+2 < len(val) && val[i+1:i+3] == "or" {
+					chunk.WriteString("or")
+					i += 2
+				} else if i+3 < len(val) && val[i+1:i+4] == "and" {
+					chunk.WriteString("and")
+					i += 3
+				} else if i+3 < len(val) && val[i+1:i+4] == "not" {
+					chunk.WriteString("not")
+					i += 3
+				} else {
+					chunk.WriteByte(ch)
+				}
+			} else if ch == '*' {
+				isWildcard = true
+				b.WriteString(regexp.QuoteMeta(chunk.String()))
+				chunk.Reset()
+				b.WriteString(".*")
+			} else {
+				chunk.WriteByte(ch)
+			}
+			i++
+		}
+		if isWildcard {
+			b.WriteString(regexp.QuoteMeta(chunk.String()))
+		} else {
+			b.WriteString(chunk.String())
+		}
+	}
+
+	s := b.String()
+	if isWildcard {
+		s = "^" + s + "$"
+		return term{
+			Val:       s,
+			Wildcard:  true,
+			regexpVal: regexp.MustCompile(s),
+		}
+	}
+	return term{
+		Val:      s,
+		Wildcard: false,
+	}
 }
