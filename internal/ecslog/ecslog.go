@@ -18,7 +18,7 @@ import (
 // Version is the semver version of this tool.
 const Version = "0.0.0"
 
-const maxLineLen = 8192
+const maxLineLen = 16384
 
 // Renderer is the class used to drive ECS log rendering (aka pretty printing).
 type Renderer struct {
