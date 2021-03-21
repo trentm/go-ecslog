@@ -70,3 +70,5 @@ Open questions:
   case `@timestamp`?
 - I'm curious if KQL handles the case of a term with both a unescaped and an
   escaped asterisk: `foo*bar\*`.
+- There are a number of "Q:" log statements in kqlog/rpn.go with compat
+  questions. See https://github.com/trentm/go-ecslog/issues/2

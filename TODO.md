@@ -6,7 +6,6 @@
     ecslog: error: bufio.Scanner: token too long
   The log line had a huge "message" field... so need a guard on each field size.
   https://stackoverflow.com/questions/21124327 suggests "bufio.Reader.ReadLine"
-- kqlog: TODO, XXX, Q:
 - `-x, --elide-fields' or something to remote from rendering
   Matching to *include* only given fields? Is this only about "extra" fields?
 - get examples from the other ecs-loggers, esp. zap has some differences
@@ -37,7 +36,7 @@
 - [ ] bug reporting facility on crash? Not sure we can with golang. Could just
   be a `--bug` CLI and github issue template with commands to gather and
   `ESLOG_DEBUG` advice.
-- [ ] handle all `lg.Printf("Q: ...")` and `XXX` and `TODO` in the code
+- [ ] handle `XXX` and `TODO` in the code
 
 # docs
 

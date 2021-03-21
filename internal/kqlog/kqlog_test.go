@@ -462,13 +462,9 @@ var matchTestCases = []matchTestCase{
 
 	// Date range queries.
 	//
-	// Q: Does Kibana specially handle time fields comparison? The KQL docs
-	// aren't very specific. E.g. are dates with timezone offsets normalized
-	// to UTC for comparison?
-	// https://www.elastic.co/guide/en/kibana/current/kuery-query.html#_date_range_queries
-	//
 	// Here we treat them just as a string comparisons, relying on time/date
-	// strings that are comparable.
+	// strings that are comparable. I.e. this is not handling TZs. See
+	// "Open Questions" in the README.
 	{
 		"date range query 1",
 		fastjson.MustParse(`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`),
