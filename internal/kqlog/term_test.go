@@ -18,6 +18,12 @@ var termTestCases = []termTestCase{
 		term{Val: ""},
 		false,
 	},
+	{
+		"basic",
+		"foo",
+		term{Val: "foo"},
+		false,
+	},
 
 	{
 		"wildcard 1",
@@ -83,7 +89,40 @@ var termTestCases = []termTestCase{
 	{"do NOT escape keyword not-prefix", "\\notMORE", term{Val: "\notMORE"}, false},
 
 	// Quoted terms
-	// XXX
+	{
+		"quoted empty",
+		`""`,
+		term{Val: ``},
+		true,
+	},
+	{
+		"quoted basic",
+		`"foo"`,
+		term{Val: `foo`},
+		true,
+	},
+	{
+		"quoted no wildcard",
+		`"ba*"`,
+		term{Val: `ba*`},
+		true,
+	},
+
+	// Quoted escapes
+	{"quoted escape whitespace t", "\"foo\\t\"", term{Val: "foo\t"}, true},
+	{"quoted escape whitespace r", "\"foo\\r\"", term{Val: "foo\r"}, true},
+	{"quoted escape whitespace n", "\"foo\\n\"", term{Val: "foo\n"}, true},
+	{"quoted escape special \"", "\"foo\\\"\"", term{Val: "foo\""}, true},
+	{"quoted escape special \\", "\"foo\\\\\"", term{Val: "foo\\"}, true},
+	{"quoted non-escape e", "\"foo\\e\"", term{Val: "foo\\e"}, true},
+	{"quoted do not escape *", "\"foo\\*\"", term{Val: "foo\\*"}, true},
+	{"quoted do not escape (", "\"foo\\(\"", term{Val: "foo\\("}, true},
+	{"quoted do not escape )", "\"foo\\)\"", term{Val: "foo\\)"}, true},
+	{"quoted do not escape :", "\"foo\\:\"", term{Val: "foo\\:"}, true},
+	{"quoted do not escape <", "\"foo\\<\"", term{Val: "foo\\<"}, true},
+	{"quoted do not escape >", "\"foo\\>\"", term{Val: "foo\\>"}, true},
+	{"quoted do not escape {", "\"foo\\{\"", term{Val: "foo\\{"}, true},
+	{"quoted do not escape }", "\"foo\\}\"", term{Val: "foo\\}"}, true},
 }
 
 func TestTerm(t *testing.T) {
@@ -91,7 +130,12 @@ func TestTerm(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("-- term test case %q\n", tc.name)
 			t.Logf("  input: %q\n", tc.input)
-			trm := newTerm(tc.input)
+			var trm term
+			if tc.quoted {
+				trm = newQuotedTerm(tc.input)
+			} else {
+				trm = newTerm(tc.input)
+			}
 			t.Logf("  term: %v\n", trm)
 			if !(trm.Val == tc.trm.Val && trm.Wildcard == tc.trm.Wildcard) {
 				t.Errorf(
