@@ -96,6 +96,7 @@ var lexTestCases = []lexTestCase{
 		mkToken(tokTypeUnquotedLiteral, "baz"),
 		tokEOF,
 	}},
+
 	{"range operators 1", "bytes > 1000 and bytes < 8000", []token{
 		mkToken(tokTypeUnquotedLiteral, "bytes"),
 		tokGt,
@@ -116,6 +117,17 @@ var lexTestCases = []lexTestCase{
 		mkToken(tokTypeUnquotedLiteral, "8000"),
 		tokEOF,
 	}},
+	{"date range 1", `created_at >= "2021" and created_at < "2021-03-21T16:51:43.694Z"`, []token{
+		mkToken(tokTypeUnquotedLiteral, "created_at"),
+		tokGte,
+		mkToken(tokTypeQuotedLiteral, `"2021"`),
+		tokAnd,
+		mkToken(tokTypeUnquotedLiteral, "created_at"),
+		tokLt,
+		mkToken(tokTypeQuotedLiteral, `"2021-03-21T16:51:43.694Z"`),
+		tokEOF,
+	}},
+
 	{"wildcard in field name", "machine*:osx", []token{
 		mkToken(tokTypeUnquotedLiteral, "machine*"),
 		tokColon,
@@ -134,22 +146,16 @@ var lexTestCases = []lexTestCase{
 		mkToken(tokTypeUnquotedLiteral, "*"),
 		tokEOF,
 	}},
+
 	{"do not support nested queries", "nestedField:{ childOfNested: foo }", []token{
 		mkToken(tokTypeUnquotedLiteral, "nestedField"),
 		tokColon,
 		mkToken(tokTypeError, "do not support KQL nest field queries: '{'"),
 	}},
 
-	// TODO: quoted literals
-	// {"field value expression, quoted literal value", `foo:"bar baz"`, []token{
-	// 	mkToken(tokTypeUnquotedLiteral, "foo"),
-	// 	tokColon,
-	// 	mkToken(tokTypeQuotedLiteral, `"bar baz"`),
-	// 	tokEOF,
-	// }},
-
 	// Escapes
 	// TODO: a lot more here, so far these are just feeling escaping out
+	// TODO: add "escaping" test cases from kibana/src/plugins/data/common/es_query/kuery/ast/ast.test.ts
 	{"escapes: colon", "foo:bar\\:", []token{
 		mkToken(tokTypeUnquotedLiteral, "foo"),
 		tokColon,
@@ -169,7 +175,30 @@ var lexTestCases = []lexTestCase{
 		mkToken(tokTypeError, "unterminated character escape"),
 	}},
 
-	// TODO: add "escaping" test cases from kibana/src/plugins/data/common/es_query/kuery/ast/ast.test.ts
+	// Quoted literals
+	{"quoted literal term", `foo:"bar baz"`, []token{
+		mkToken(tokTypeUnquotedLiteral, "foo"),
+		tokColon,
+		mkToken(tokTypeQuotedLiteral, `"bar baz"`),
+		tokEOF,
+	}},
+	{"quoted literal term surrounding space", "\t\n \"bar\tbaz\" ", []token{
+		mkToken(tokTypeQuotedLiteral, "\"bar\tbaz\""),
+		tokEOF,
+	}},
+	{"empty quoted literal", `foo:""`, []token{
+		mkToken(tokTypeUnquotedLiteral, "foo"),
+		tokColon,
+		mkToken(tokTypeQuotedLiteral, `""`),
+		tokEOF,
+	}},
+	{"quoted literal escaped double-quote", `foo:"bar\"bling"`, []token{
+		mkToken(tokTypeUnquotedLiteral, "foo"),
+		tokColon,
+		mkToken(tokTypeQuotedLiteral, `"bar\"bling"`),
+		tokEOF,
+	}},
+
 	// TODO: test each of the errorf cases in lex.go
 }
 

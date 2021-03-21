@@ -54,6 +54,12 @@ var matchTestCases = []matchTestCase{
 		"foo: bar baz",
 		true,
 	},
+	{
+		"terms query: quoted values",
+		fastjson.MustParse(`{"foo": "bar baz"}`),
+		`foo: "bar baz"`,
+		true,
+	},
 
 	{
 		"terms query: wildcard 1",
@@ -85,7 +91,12 @@ var matchTestCases = []matchTestCase{
 		"foo:*ar ba*",
 		true,
 	},
-
+	{
+		"terms query: wildcard quoted value",
+		fastjson.MustParse(`{"foo": "bar baz"}`),
+		"foo:*az",
+		true,
+	},
 	{
 		"terms query: wildcard test anchoring",
 		fastjson.MustParse(`{"foo": "BEFOREbazAFTER"}`),
@@ -286,6 +297,18 @@ var matchTestCases = []matchTestCase{
 		"log.level > error",
 		false,
 	},
+	{
+		"range query: gt, log.level special casing quoted value",
+		fastjson.MustParse(`{"log.level": "error"}`),
+		`log.level > "info"`,
+		true,
+	},
+	{
+		"range query: gt, escaped keyword value",
+		fastjson.MustParse(`{"foo": "bar"}`),
+		"foo > \\and",
+		true,
+	},
 
 	{
 		"range query: gte",
@@ -425,34 +448,39 @@ var matchTestCases = []matchTestCase{
 		true,
 	},
 
-	// TODO: re-enable these tests when support quoted literals
-	// // Date range queries.
-	// //
-	// // Q: Does Kibana specially handle time fields comparison? The KQL docs
-	// // aren't very specific. E.g. are dates with timezone offsets normalized
-	// // to UTC for comparison?
-	// // https://www.elastic.co/guide/en/kibana/current/kuery-query.html#_date_range_queries
-	// //
-	// // Here we treat them just as a string comparisons, relying on time/date
-	// // strings that are comparable.
-	// {
-	// 	"date range query 1",
-	// 	fastjson.MustParse(`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`),
-	// 	`@timestamp < 2021-02-14T21:55:59`,
-	// 	true,
-	// },
-	// {
-	// 	"date range query 2",
-	// 	fastjson.MustParse(`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`),
-	// 	`@timestamp < 2021-02`,
-	// 	true,
-	// },
-	// {
-	// 	"date range query 3",
-	// 	fastjson.MustParse(`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`),
-	// 	`@timestamp >= 2021`,
-	// 	true,
-	// },
+	// Date range queries.
+	//
+	// Q: Does Kibana specially handle time fields comparison? The KQL docs
+	// aren't very specific. E.g. are dates with timezone offsets normalized
+	// to UTC for comparison?
+	// https://www.elastic.co/guide/en/kibana/current/kuery-query.html#_date_range_queries
+	//
+	// Here we treat them just as a string comparisons, relying on time/date
+	// strings that are comparable.
+	{
+		"date range query 1",
+		fastjson.MustParse(`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`),
+		`@timestamp < "2021-02-14T21:55:59"`,
+		true,
+	},
+	{
+		"date range query 2",
+		fastjson.MustParse(`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`),
+		`@timestamp < "2021-02"`,
+		true,
+	},
+	{
+		"date range query 3",
+		fastjson.MustParse(`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`),
+		`@timestamp < 2021-02`,
+		true,
+	},
+	{
+		"date range query 4",
+		fastjson.MustParse(`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`),
+		`@timestamp >= 2021`,
+		true,
+	},
 }
 
 func indexOf(items []string, val string) int {

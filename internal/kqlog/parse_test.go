@@ -27,6 +27,7 @@ var parseTestCases = []parseTestCase{
 		"",
 	},
 
+	// XXX update for `term` type usage
 	{
 		"terms query with no field name",
 		"foo",
@@ -60,6 +61,26 @@ var parseTestCases = []parseTestCase{
 		}},
 		"",
 	},
+	{
+		"terms query: quoted terms",
+		`foo:"bar baz" bling\"`,
+		&Filter{steps: []rpnStep{
+			&rpnTermsQuery{field: "foo", terms: []term{
+				newQuotedTerm(`"bar baz"`),
+				newTerm(`bling"`),
+			}},
+		}},
+		"",
+	},
+	// TODO: quoted fields
+	// {
+	// 	"terms query: quoted field",
+	// 	`"foo bar":baz`,
+	// 	&Filter{steps: []rpnStep{
+	// 		&rpnTermsQuery{field: "foo bar", terms: []term{newTerm("baz")}},
+	// 	}},
+	// 	"",
+	// },
 
 	// Match all terms queries
 	{
@@ -67,6 +88,43 @@ var parseTestCases = []parseTestCase{
 		"foo:(bar and baz)",
 		&Filter{steps: []rpnStep{
 			&rpnMatchAllTermsQuery{field: "foo", terms: []term{newTerm("bar"), newTerm("baz")}},
+		}},
+		"",
+	},
+	{
+		"match all terms query, quoted term",
+		`foo:(bar and "baz blah")`,
+		&Filter{steps: []rpnStep{
+			&rpnMatchAllTermsQuery{field: "foo", terms: []term{
+				newTerm("bar"),
+				newQuotedTerm(`"baz blah"`),
+			}},
+		}},
+		"",
+	},
+
+	// Range queries
+	{
+		"range query",
+		"foo > 42",
+		&Filter{steps: []rpnStep{
+			&rpnGtRangeQuery{field: "foo", term: newTerm("42")},
+		}},
+		"",
+	},
+	{
+		"date range query, quoted",
+		"dob <= \"1970-01-01T\"",
+		&Filter{steps: []rpnStep{
+			&rpnLteRangeQuery{field: "dob", term: newQuotedTerm(`"1970-01-01T"`)},
+		}},
+		"",
+	},
+	{
+		"range query, escaped keyword value",
+		"foo > \\and",
+		&Filter{steps: []rpnStep{
+			&rpnGtRangeQuery{field: "foo", term: newTerm("and")},
 		}},
 		"",
 	},
@@ -154,9 +212,11 @@ func TestParse(t *testing.T) {
 			// nil for logLevelLess arg because it isn't relevant for parsing.
 			p := newParser(tc.input, nil)
 			f, err := p.parse()
-			t.Logf("  filter steps:\n")
-			for _, s := range f.steps {
-				t.Logf("\t%s\n", s)
+			if f != nil {
+				t.Logf("  filter steps:\n")
+				for _, s := range f.steps {
+					t.Logf("    %s\n", s)
+				}
 			}
 			if !reflect.DeepEqual(f, tc.filter) {
 				t.Errorf(

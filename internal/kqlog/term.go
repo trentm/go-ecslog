@@ -85,25 +85,19 @@ func (t *term) GetNumVal() (numVal float64, ok bool) {
 	return t.numVal, t.numOk
 }
 
-// newTerm handles creating a `term` used for comparison in queries.
+// newTerm handles creating a `term` from an unquoted literal string.
 //
-// It handles escaping rules in quoted strings and unquoted literals as defined
-// by the `Literal` production in:
+// It handles escaping rules in quoted literals as defined by the `Literal`
+// production in:
 // https://github.com/elastic/kibana/blob/e2abb03ad03d27dcbe0a36964ea78a4361c038da/src/plugins/data/common/es_query/kuery/ast/kuery.peg#L212-L290
 // See some test cases here:
 // https://github.com/elastic/kibana/blob/e2abb03ad03d27dcbe0a36964ea78a4361c038da/src/plugins/data/common/es_query/kuery/ast/ast.test.ts#L316-L333
 //
-// If quoted, there can be backslash escaping for:
-// - whitespace: `\t`, `\n`, `\r`
-// - double-quotes: `\"`
 // If unquoted, an asterisk is a wildcard, and there can be backslash escaping for:
 // - whitespace: `\t`, `\n`, `\r`
 // - special characters: `\\`, `\(`, `\)`, `\:`, `\<`, `\>`, `\"`, `\{`, `\}`
 // - keywords: `\and`, `\or`, `\not`
-// XXX func newTerm(val string, quoted bool) term {
 func newTerm(val string) term {
-	quoted := false // XXX take arg when quoted strings are supported
-
 	whitespaceFromEscapeChar := map[byte]byte{
 		'n': '\n',
 		't': '\t',
@@ -125,61 +119,57 @@ func newTerm(val string) term {
 	isWildcard := false
 	var b strings.Builder
 
-	if quoted {
-		// Handle escapes.
-		panic("XXX NYI")
-	} else {
-		// If the unescaped `*` wildcard char is found, then Val is the regexp
-		// pattern, and Wildcard is set true.
-		// TODO: I'm curious if KQL handles the case of a term with both a
-		// unescaped and an escaped asterisk: `foo*bar\*`.
-		var chunk strings.Builder
-		var ch byte
-		i := 0
-		// A byte loop suffices here because all KQL metacharacters are ASCII.
-		for i < len(val) {
-			ch = val[i]
-			if ch == '\\' {
-				if i+1 >= len(val) {
-					// In normal parsing, this is caught by the lexer. However,
-					// guard against direct `newTerm("foo\\")` calls.
-					lg.Fatalf("term ends in unescaped backslash (\\): %q", val)
-				}
-				// See if escaping whitespace, special char, or keyword.
-				nextCh := val[i+1]
-				if ws, ok := whitespaceFromEscapeChar[nextCh]; ok {
-					chunk.WriteByte(ws)
-					i++
-				} else if _, ok := unquotedSpecialChars[nextCh]; ok {
-					chunk.WriteByte(nextCh)
-					i++
-				} else if i+2 < len(val) && val[i+1:i+3] == "or" {
-					chunk.WriteString("or")
-					i += 2
-				} else if i+3 < len(val) && val[i+1:i+4] == "and" {
-					chunk.WriteString("and")
-					i += 3
-				} else if i+3 < len(val) && val[i+1:i+4] == "not" {
-					chunk.WriteString("not")
-					i += 3
-				} else {
-					chunk.WriteByte(ch)
-				}
-			} else if ch == '*' {
-				isWildcard = true
-				b.WriteString(regexp.QuoteMeta(chunk.String()))
-				chunk.Reset()
-				b.WriteString(".*")
+	// If the unescaped `*` wildcard char is found, then Val is the regexp
+	// pattern, and Wildcard is set true.
+	// TODO: I'm curious if KQL handles the case of a term with both a
+	// unescaped and an escaped asterisk: `foo*bar\*`.
+	var chunk strings.Builder
+	var ch byte
+	i := 0
+	// A byte loop suffices here because all KQL metacharacters are ASCII.
+	for i < len(val) {
+		ch = val[i]
+		if ch == '\\' {
+			if i+1 >= len(val) {
+				// In normal parsing, this is caught by the lexer. However,
+				// guard against direct `newTerm("foo\\")` calls.
+				lg.Fatalf("term ends in unescaped backslash (\\): %q", val)
+			}
+			// See if escaping whitespace, special char, or keyword.
+			nextCh := val[i+1]
+			if ws, ok := whitespaceFromEscapeChar[nextCh]; ok {
+				chunk.WriteByte(ws)
+				i++
+			} else if _, ok := unquotedSpecialChars[nextCh]; ok {
+				chunk.WriteByte(nextCh)
+				i++
+				// XXX does the following allow `\orfoo`, `\andfoo`, `\notfoo`? i.e. trailing content? It shouldn't
+			} else if i+2 < len(val) && val[i+1:i+3] == "or" {
+				chunk.WriteString("or")
+				i += 2
+			} else if i+3 < len(val) && val[i+1:i+4] == "and" {
+				chunk.WriteString("and")
+				i += 3
+			} else if i+3 < len(val) && val[i+1:i+4] == "not" {
+				chunk.WriteString("not")
+				i += 3
 			} else {
 				chunk.WriteByte(ch)
 			}
-			i++
-		}
-		if isWildcard {
+		} else if ch == '*' {
+			isWildcard = true
 			b.WriteString(regexp.QuoteMeta(chunk.String()))
+			chunk.Reset()
+			b.WriteString(".*")
 		} else {
-			b.WriteString(chunk.String())
+			chunk.WriteByte(ch)
 		}
+		i++
+	}
+	if isWildcard {
+		b.WriteString(regexp.QuoteMeta(chunk.String()))
+	} else {
+		b.WriteString(chunk.String())
 	}
 
 	s := b.String()
@@ -193,6 +183,69 @@ func newTerm(val string) term {
 	}
 	return term{
 		Val:      s,
+		Wildcard: false,
+	}
+}
+
+// newQuotedTerm handles creating a `term` from a *quoted* literal string.
+//
+// It handles escaping rules in quoted literals as defined by the `Literal`
+// production in:
+// https://github.com/elastic/kibana/blob/e2abb03ad03d27dcbe0a36964ea78a4361c038da/src/plugins/data/common/es_query/kuery/ast/kuery.peg#L212-L290
+// See some test cases here:
+// https://github.com/elastic/kibana/blob/e2abb03ad03d27dcbe0a36964ea78a4361c038da/src/plugins/data/common/es_query/kuery/ast/ast.test.ts#L316-L333
+//
+// If quoted, there can be backslash escaping for:
+// - whitespace: `\t`, `\n`, `\r`
+// - special characters: `\\`, `\"`
+func newQuotedTerm(val string) term {
+	whitespaceFromEscapeChar := map[byte]byte{
+		'n': '\n',
+		't': '\t',
+		'r': '\r',
+	}
+	unquotedSpecialChars := map[byte]bool{
+		'\\': true,
+		'"':  true,
+	}
+
+	if val[0] != '"' || val[len(val)-1] != '"' {
+		// In normal parsing, the lexer guarantees this isn't the case. However,
+		// guard this for direct newQuotedTerm usage.
+		lg.Fatalf("quoted term does not include opening and closing double-quotes: %q", val)
+	}
+
+	var b strings.Builder
+	var ch byte
+	i := 1 // val includes the bounding double-quotes, skip them.
+	// A byte loop suffices here because all KQL metacharacters are ASCII.
+	for i < len(val)-1 {
+		ch = val[i]
+		if ch == '\\' {
+			if i+1 >= len(val)-1 {
+				// In normal parsing, this is caught by the lexer. However,
+				// guard against direct `newQuotedTerm("foo\\")` calls.
+				lg.Fatalf("quoted term ends in unescaped backslash (\\): %q", val)
+			}
+			// See if escaping whitespace or special char.
+			nextCh := val[i+1]
+			if ws, ok := whitespaceFromEscapeChar[nextCh]; ok {
+				b.WriteByte(ws)
+				i++
+			} else if _, ok := unquotedSpecialChars[nextCh]; ok {
+				b.WriteByte(nextCh)
+				i++
+			} else {
+				b.WriteByte(ch)
+			}
+		} else {
+			b.WriteByte(ch)
+		}
+		i++
+	}
+
+	return term{
+		Val:      b.String(),
 		Wildcard: false,
 	}
 }

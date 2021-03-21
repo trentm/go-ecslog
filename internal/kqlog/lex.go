@@ -37,6 +37,7 @@ const (
 	tokTypeError tokType = iota
 	tokTypeEOF
 	tokTypeUnquotedLiteral
+	tokTypeQuotedLiteral
 	// tokTypeSpecials is not an actual type, but used to assist String() impl.
 	// Types of tokens with special meaning in KQL should be listed after here.
 	tokTypeSpecials
@@ -56,7 +57,8 @@ const (
 var nameFromTokType = map[tokType]string{
 	tokTypeError:           "error",
 	tokTypeEOF:             "EOF",
-	tokTypeUnquotedLiteral: "unquoted literal",
+	tokTypeUnquotedLiteral: "unquoted-literal",
+	tokTypeQuotedLiteral:   "quoted-literal",
 	tokTypeOr:              "or",
 	tokTypeAnd:             "and",
 	tokTypeNot:             "not",
@@ -80,14 +82,13 @@ func (tt tokType) String() string {
 func (t token) String() string {
 	switch {
 	case t.typ == tokTypeEOF:
-		return "EOF"
+		return "<token EOF>"
 	case t.typ == tokTypeError:
-		return fmt.Sprintf("<error: %s>", t.val)
+		return fmt.Sprintf("<token error: %s>", t.val)
 	case t.typ > tokTypeSpecials:
-		return t.val
+		return fmt.Sprintf("<token `%s`>", t.typ)
 	default:
-		// TODO: want to differentiate unquoted and quoted literals here?
-		return fmt.Sprintf("%q", t.val)
+		return fmt.Sprintf("<token %s: %q>", t.typ, t.val)
 	}
 }
 
@@ -226,7 +227,7 @@ func lexInsideKQL(l *lexer) lexerStateFn {
 	case r == ':':
 		l.emit(tokTypeColon)
 	case r == '"':
-		return l.errorf("do not yet support quoted literals")
+		return lexQuotedLiteral
 	case r == '<':
 		if l.next() == '=' {
 			l.emit(tokTypeLte)
@@ -293,6 +294,24 @@ Loop:
 	}
 
 	return lexInsideKQL
+}
+
+// lexQuotedLiteral scans a quoted literal.
+// The opening double-quote char has already been scanned.
+func lexQuotedLiteral(l *lexer) lexerStateFn {
+	for {
+		switch r := l.next(); {
+		case r == eof:
+			return l.errorf("unterminated quoted literal")
+		case r == '\\':
+			if l.next() == eof {
+				return l.errorf("unterminated character escape")
+			}
+		case r == '"':
+			l.emit(tokTypeQuotedLiteral)
+			return lexInsideKQL
+		}
+	}
 }
 
 // isSpace reports whether r is a space character.

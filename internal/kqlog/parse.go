@@ -128,8 +128,13 @@ func parseRangeQuery(p *parser) parserStateFn {
 	case tokTypeError:
 		p.backup(valTok)
 		return parseErrorTok
-	case tokTypeUnquotedLiteral:
-		trm := newTerm(valTok.val)
+	case tokTypeUnquotedLiteral, tokTypeQuotedLiteral:
+		var trm term
+		if valTok.typ == tokTypeUnquotedLiteral {
+			trm = newTerm(valTok.val)
+		} else {
+			trm = newQuotedTerm(valTok.val)
+		}
 		if trm.Wildcard {
 			return p.errorfAt(valTok.pos, "cannot have a wildcard in range query token")
 		}
@@ -174,27 +179,29 @@ func parseRangeQuery(p *parser) parserStateFn {
 // parseTermsQuery parses one of the types of "terms queries". The field token
 // has been parsed to `p.field` and the next token is the colon.
 //
-// E.g.: `foo:value1 value2`, `foo:(a or b)`, `foo:(a and b and c)`, `foo:*`
+// E.g.: `foo:value1 value2`, `foo:(a or b)`, `foo:(a and b and c)`, `foo:*`,
+// `foo:"bar baz"`
 func parseTermsQuery(p *parser) parserStateFn {
 	p.next() // Consume the ':' token.
 
 	var terms []term
-	tok := p.next()
+	tok := p.peek()
 	switch tok.typ {
-	case tokTypeUnquotedLiteral:
+	case tokTypeUnquotedLiteral, tokTypeQuotedLiteral:
 		// E.g. `foo:val1 val2`, `breakfast:*am eggs` or `foo:*`.
 		// If at least one of the terms is `*`, then this is an "exists query".
-		terms = append(terms, newTerm(tok.val))
-		haveExistsTerm := tok.val == "*"
+		haveExistsTerm := false
 		for {
-			tok := p.peek()
+			tok := p.next()
 			if tok.typ == tokTypeUnquotedLiteral {
 				if tok.val == "*" {
 					haveExistsTerm = true
 				}
 				terms = append(terms, newTerm(tok.val))
-				p.next() // Consume the token.
+			} else if tok.typ == tokTypeQuotedLiteral {
+				terms = append(terms, newQuotedTerm(tok.val))
 			} else {
+				p.backup(tok)
 				break
 			}
 		}
@@ -211,17 +218,21 @@ func parseTermsQuery(p *parser) parserStateFn {
 		// TODO: Edge cases like no terms `foo:()`, a single term `foo:(a)`,
 		// superfluous parentheses `foo:((a and (b)))`, wildcard in second
 		// form `foo:(a and *)`.
+		p.next()          // Consume the open paren.
 		matchAll := false // True if the second form with `and`: `foo:(a and b ...)`.
 		haveExistsTerm := false
 		for i := 0; true; i++ {
 			// Expect literal ...
 			termTok := p.next()
-			if termTok.typ != tokTypeUnquotedLiteral {
+			if termTok.typ == tokTypeUnquotedLiteral {
+				terms = append(terms, newTerm(termTok.val))
+				if termTok.val == "*" {
+					haveExistsTerm = true
+				}
+			} else if termTok.typ == tokTypeQuotedLiteral {
+				terms = append(terms, newQuotedTerm(termTok.val))
+			} else {
 				return p.errorfAt(termTok.pos, "expected literal, got %s", termTok.typ)
-			}
-			terms = append(terms, newTerm(termTok.val))
-			if termTok.val == "*" {
-				haveExistsTerm = true
 			}
 			// ... then ')' to complete the query, or 'and' or 'or' to repeat.
 			opTok := p.next()
@@ -351,6 +362,7 @@ func parseBeforeQuery(p *parser) parserStateFn {
 		p.stageBoolOp(tok)
 		p.incompleteBoolOp = true
 		return parseBeforeQuery
+	// TODO: support tokTypeQuotedLiteral here for quoted *fields*
 	case tokTypeUnquotedLiteral:
 		p.incompleteBoolOp = false
 		switch tok2 := p.peek(); tok2.typ {

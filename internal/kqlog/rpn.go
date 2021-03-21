@@ -46,7 +46,6 @@ func (q *rpnTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
 		return
 	}
 
-	// TODO: wildcard handling in terms
 	// TODO: wildcard handling in field!
 
 	for _, t := range q.terms {
