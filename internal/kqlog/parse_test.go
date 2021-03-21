@@ -85,15 +85,6 @@ var parseTestCases = []parseTestCase{
 		}},
 		"",
 	},
-	// TODO: quoted fields
-	// {
-	// 	"terms query: quoted field",
-	// 	`"foo bar":baz`,
-	// 	&Filter{steps: []rpnStep{
-	// 		&rpnTermsQuery{field: "foo bar", terms: []term{newTerm("baz")}},
-	// 	}},
-	// 	"",
-	// },
 
 	// Match all terms queries
 	{
@@ -206,8 +197,80 @@ var parseTestCases = []parseTestCase{
 		"",
 	},
 
-	// TODO: lots of tests to fill out here
-	// TODO: add one test for each `p.errorfAt()` case
+	// Error cases
+	// Ideally we have a test case for each `p.errorfAt()` in parse.go.
+	{
+		"error case: too early EOF",
+		"foo:",
+		nil,
+		"expected a literal or '('; got EOF",
+	},
+	{
+		"error case: too early EOF, shows context",
+		"foo:",
+		nil,
+		"    foo:\n    ....^",
+	},
+	{
+		"error case: lexer error token",
+		"nestedField:{ childOfNested: foo }",
+		nil,
+		"do not support KQL nested field queries",
+	},
+	{
+		"error case: no wildcard in range query term",
+		"foo < bar*",
+		nil,
+		"cannot have a wildcard in range query token",
+	},
+	{
+		"error case: range query syntax",
+		"foo < : bar",
+		nil,
+		"expected a literal after '<'; got :",
+	},
+	{
+		"error case: parenthesized terms 1",
+		"foo:(foo and)",
+		nil,
+		"expected literal, got )",
+	},
+	{
+		"error case: parenthesized terms 2",
+		"foo:(bar :",
+		nil,
+		"expected ')', 'or', or 'and'; got :",
+	},
+	{
+		"error case: parenthesized terms 3",
+		"foo:(bar and baz or bling)",
+		nil,
+		"cannot mix 'and' and 'or' in parenthesized value group",
+	},
+	{
+		"error case: parenthesized terms 4",
+		"foo: : bar",
+		nil,
+		"expected a literal or '('; got :",
+	},
+	{
+		"error case: incomplete 1",
+		"(foo and)",
+		nil,
+		"expecting a literal, 'not', or '('; got )",
+	},
+	{
+		"error case: incomplete 2",
+		"foo and",
+		nil,
+		"incomplete boolean operator",
+	},
+	{
+		"error case: unmatched close parenthesis",
+		"(foo))",
+		nil,
+		"unmatched close parenthesis",
+	},
 }
 
 func equalErrSubstr(err error, errSubstr string) bool {
@@ -228,7 +291,7 @@ func TestParse(t *testing.T) {
 			p := newParser(tc.input, nil)
 			f, err := p.parse()
 			if err != nil {
-				t.Logf("  err: %s\n", err)
+				t.Logf("  err: %q\n", err)
 			}
 			if f != nil {
 				t.Logf("  filter steps:\n")

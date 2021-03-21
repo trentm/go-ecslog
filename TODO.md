@@ -46,6 +46,7 @@
 # later
 
 - "http" output format
+- "--strict" field to restrict to just ecslog output (elide non-ECS format lines)
 - -x,--exclude-fields option to remove the given fields from the rendering
   of any line, or -i, --include-fields?
 - coloring for added zap and other levels (test case for this)

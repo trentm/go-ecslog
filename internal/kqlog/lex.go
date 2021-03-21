@@ -243,7 +243,7 @@ func lexInsideKQL(l *lexer) lexerStateFn {
 			l.emit(tokTypeGt)
 		}
 	case r == '{' || r == '}':
-		return l.errorf("do not support KQL nest field queries: %q", r)
+		return l.errorf("do not support KQL nested field queries: %q", r)
 	// JSON strings may not contain embedded null characters, not even escaped
 	// ones. All other Unicode codepoints U+0001 through U+10FFFF are allowed.
 	case '\u0001' <= r && r <= unicode.MaxRune:

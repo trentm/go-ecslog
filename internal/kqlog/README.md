@@ -23,6 +23,8 @@ sometimes called "kuery" in code), with some tweaks for use in the
      (Dev Note: To implement this I would add a `type fieldTerm` to term.go
      and share the parsing in `newTerm` and `newQuotedTerm`.)
    - No support for wildcards in the *field* part of a query, e.g. `foo*: bar`
+   - Some edge cases with parenthesized values are not current supported, e.g.:
+     no terms `foo:()` and superfluous parentheses `foo:((a and (b)))`.
 
 2. Special case tweaks to the syntax for the benefit of log record filtering
    on the command line are:
@@ -66,3 +68,5 @@ Open questions:
   Does KQL in Kibana/Elasticsearch handling timezones if the timestamp
   specifies a TZ offset (e.g. as ecszap does)? If so, should kqlog special
   case `@timestamp`?
+- I'm curious if KQL handles the case of a term with both a unescaped and an
+  escaped asterisk: `foo*bar\*`.

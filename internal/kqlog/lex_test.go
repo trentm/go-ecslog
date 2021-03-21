@@ -150,7 +150,7 @@ var lexTestCases = []lexTestCase{
 	{"do not support nested queries", "nestedField:{ childOfNested: foo }", []token{
 		mkToken(tokTypeUnquotedLiteral, "nestedField"),
 		tokColon,
-		mkToken(tokTypeError, "do not support KQL nest field queries: '{'"),
+		mkToken(tokTypeError, "do not support KQL nested field queries: '{'"),
 	}},
 
 	// Escapes

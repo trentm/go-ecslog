@@ -172,7 +172,7 @@ func parseRangeQuery(p *parser) parserStateFn {
 		return parseAfterQuery
 	default:
 		return p.errorfAt(valTok.pos, "expected a literal after '%s'; got %s",
-			opTok, valTok.typ)
+			opTok.val, valTok.typ)
 	}
 }
 
@@ -187,6 +187,8 @@ func parseTermsQuery(p *parser) parserStateFn {
 	var terms []term
 	tok := p.peek()
 	switch tok.typ {
+	case tokTypeError:
+		return parseErrorTok
 	case tokTypeUnquotedLiteral, tokTypeQuotedLiteral:
 		// E.g. `foo:val1 val2`, `breakfast:*am eggs` or `foo:*`.
 		// If at least one of the terms is `*`, then this is an "exists query".
@@ -214,21 +216,13 @@ func parseTermsQuery(p *parser) parserStateFn {
 		return parseAfterQuery
 	case tokTypeOpenParen:
 		// E.g. `foo:(a or b ...)` or `foo:(a and b and c)`.
-		//
-		// TODO: Edge cases like no terms `foo:()`, a single term `foo:(a)`,
-		// superfluous parentheses `foo:((a and (b)))`, wildcard in second
-		// form `foo:(a and *)`.
 		p.next()          // Consume the open paren.
 		matchAll := false // True if the second form with `and`: `foo:(a and b ...)`.
-		haveExistsTerm := false
 		for i := 0; true; i++ {
 			// Expect literal ...
 			termTok := p.next()
 			if termTok.typ == tokTypeUnquotedLiteral {
 				terms = append(terms, newTerm(termTok.val))
-				if termTok.val == "*" {
-					haveExistsTerm = true
-				}
 			} else if termTok.typ == tokTypeQuotedLiteral {
 				terms = append(terms, newQuotedTerm(termTok.val))
 			} else {
@@ -238,12 +232,7 @@ func parseTermsQuery(p *parser) parserStateFn {
 			opTok := p.next()
 			switch opTok.typ {
 			case tokTypeCloseParen:
-				if haveExistsTerm {
-					// For now, treating `*` literal in these forms as an
-					// exists query.
-					// TODO: Verify against kuery.peg, I'm not so sure about this.
-					p.filter.addStep(&rpnExistsQuery{field: p.field.val})
-				} else if matchAll {
+				if matchAll {
 					p.filter.addStep(&rpnMatchAllTermsQuery{field: p.field.val, terms: terms})
 				} else {
 					p.filter.addStep(&rpnTermsQuery{field: p.field.val, terms: terms})
@@ -289,6 +278,7 @@ func parseAfterQuery(p *parser) parserStateFn {
 	case tokTypeCloseParen:
 		if p.incompleteBoolOp {
 			// E.g.: "(foo and)"
+			// Dev Note: I can't trigger this in tests.
 			return p.errorfAt(tok.pos, "incomplete boolean operator")
 		}
 		// Pop ops up to, and including, the matching rpnOpenParen.

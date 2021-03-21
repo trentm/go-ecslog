@@ -22,7 +22,7 @@ import (
 // comparison of the "log.level" field.
 type LogLevelLessFn func(level1, level2 string) bool
 
-// Filter ... TODO:doc
+// Filter represents a KQL query for matching against log records.
 type Filter struct {
 	steps []rpnStep
 }
@@ -77,7 +77,7 @@ func (f *Filter) Match(rec *fastjson.Value) bool {
 	return stack.Pop()
 }
 
-// NewFilter ... TODO:doc
+// NewFilter creates a new kqlog filter with which to match log records.
 func NewFilter(kql string, logLevelLess LogLevelLessFn) (*Filter, error) {
 	p := newParser(kql, logLevelLess)
 	f, err := p.parse()

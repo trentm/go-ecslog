@@ -120,8 +120,6 @@ func newTerm(val string) term {
 
 	// If the unescaped `*` wildcard char is found, then Val is the regexp
 	// pattern, and Wildcard is set true.
-	// TODO: I'm curious if KQL handles the case of a term with both a
-	// unescaped and an escaped asterisk: `foo*bar\*`.
 	var chunk strings.Builder
 	var ch byte
 	i := 0
