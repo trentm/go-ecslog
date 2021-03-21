@@ -154,8 +154,6 @@ var lexTestCases = []lexTestCase{
 	}},
 
 	// Escapes
-	// TODO: a lot more here, so far these are just feeling escaping out
-	// TODO: add "escaping" test cases from kibana/src/plugins/data/common/es_query/kuery/ast/ast.test.ts
 	{"escapes: colon", "foo:bar\\:", []token{
 		mkToken(tokTypeUnquotedLiteral, "foo"),
 		tokColon,
@@ -213,7 +211,37 @@ var lexTestCases = []lexTestCase{
 		tokEOF,
 	}},
 
-	// TODO: test each of the errorf cases in lex.go
+	// Error cases
+	// Ideally there is a test case for each `l.errorf()` in lex.go.
+	{"error case: unclosed open parenthesis", "(foo", []token{
+		tokOpenParen,
+		mkToken(tokTypeUnquotedLiteral, "foo"),
+		mkToken(tokTypeError, "unclosed open parenthesis"),
+	}},
+	{"error case: unclosed open parentheses", "(((foo", []token{
+		tokOpenParen,
+		tokOpenParen,
+		tokOpenParen,
+		mkToken(tokTypeUnquotedLiteral, "foo"),
+		mkToken(tokTypeError, "unclosed open parentheses (3)"),
+	}},
+	{"error case: unmatched close parenthesis", "foo)", []token{
+		mkToken(tokTypeUnquotedLiteral, "foo"),
+		tokCloseParen,
+		mkToken(tokTypeError, "unmatched close parenthesis"),
+	}},
+	{"error case: invalid nul char at start of token", "\u0000foo", []token{
+		mkToken(tokTypeError, "unrecognized character: U+0000"),
+	}},
+	{"error case: unterminated escape", "foo\\", []token{
+		mkToken(tokTypeError, "unterminated character escape"),
+	}},
+	{"error case: unterminated escape in quoted literal", "\"foo\\", []token{
+		mkToken(tokTypeError, "unterminated character escape"),
+	}},
+	{"error case: unterminated quoted literal", "\"foo", []token{
+		mkToken(tokTypeError, "unterminated quoted literal"),
+	}},
 }
 
 // collectTokens gathers the emitted items into a slice.
@@ -229,7 +257,7 @@ func collectTokens(tc *lexTestCase) (tokens []token) {
 	return
 }
 
-func equalTokens(i1, i2 []token, checkPos bool) bool {
+func equalTokens(i1, i2 []token) bool {
 	if len(i1) != len(i2) {
 		return false
 	}
@@ -238,9 +266,6 @@ func equalTokens(i1, i2 []token, checkPos bool) bool {
 			return false
 		}
 		if i1[k].val != i2[k].val {
-			return false
-		}
-		if checkPos && i1[k].pos != i2[k].pos {
 			return false
 		}
 	}
@@ -254,13 +279,10 @@ func TestLex(t *testing.T) {
 			t.Logf("  input: %#v\n", tc.input)
 			tokens := collectTokens(&tc)
 			t.Logf("  tokens:\n\t%#v\n\t%v\n", tokens, tokens)
-			if !equalTokens(tokens, tc.tokens, false) {
+			if !equalTokens(tokens, tc.tokens) {
 				t.Errorf("%s: got\n\t%+v\nexpected\n\t%v\ninput\n\t%s",
 					tc.name, tokens, tc.tokens, tc.input)
 			}
 		})
 	}
 }
-
-// TODO: lexPosTests from go/src/text/template/parse/lex_test.go?
-// TODO: TestShutdown from go/src/text/template/parse/lex_test.go?

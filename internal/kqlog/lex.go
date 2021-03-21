@@ -26,7 +26,7 @@ import (
 )
 
 type tokType int
-type pos int // TODO: ditch the 'pos' type. I don't see the value.
+type pos int
 type token struct {
 	typ tokType
 	pos pos // The position, in bytes, of this token in the input string.

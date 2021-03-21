@@ -324,6 +324,3 @@ func TestParse(t *testing.T) {
 		})
 	}
 }
-
-// TODO: lexPosTests from go/src/text/template/parse/lex_test.go?
-// TODO: TestShutdown from go/src/text/template/parse/lex_test.go?

@@ -88,6 +88,12 @@ var termTestCases = []termTestCase{
 	{"do NOT escape keyword or-prefix", "\\orMORE", term{Val: "\\orMORE"}, false},
 	{"do NOT escape keyword not-prefix", "\\notMORE", term{Val: "\notMORE"}, false},
 
+	{"'yo dawg' escaping test from kibana/.../ast.test.js",
+		"\\\\\\(\\)\\:\\<\\>\\\"\\*",
+		term{Val: "\\():<>\"*"},
+		false,
+	},
+
 	// Quoted terms
 	{
 		"quoted empty",
