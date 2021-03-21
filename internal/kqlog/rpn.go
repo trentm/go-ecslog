@@ -46,8 +46,6 @@ func (q *rpnTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
 		return
 	}
 
-	// TODO: wildcard handling in field!
-
 	for _, t := range q.terms {
 		switch fieldVal.Type() {
 		case fastjson.TypeNull:
@@ -119,8 +117,6 @@ func (q *rpnMatchAllTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
 		return
 	}
 
-	// TODO: wildcard handling in field!
-
 	// For example
 	// - record:   {"foo": ["one", 2, "three", 42]}
 	// - KQL:      foo:(one and 42)
@@ -181,17 +177,43 @@ func (q rpnMatchAllTermsQuery) String() string {
 }
 
 type rpnDefaultFieldsTermsQuery struct {
-	// XXX array of *term*
-	terms []string
+	terms []term
 }
 
+// exec for a default fields query, e.g. `foo`, for *now* matches against
+// the "message" field. This may change later to be more compatible with
+// search in the Kibana Logs app.
 func (q *rpnDefaultFieldsTermsQuery) exec(stack *boolStack, rec *fastjson.Value) {
-	lg.Println("XXX rpnDefaultFieldsTermsQuery NYI: what are the typical default fields for logs in Kibana?")
+	fieldVal := jsonutils.LookupValue(rec, "message")
+	if fieldVal == nil {
+		stack.Push(false)
+		return
+	}
+
+	for _, t := range q.terms {
+		switch fieldVal.Type() {
+		case fastjson.TypeString:
+			if t.MatchStringBytes(fieldVal.GetStringBytes()) {
+				stack.Push(true)
+				return
+			}
+		default:
+			// The "message" field should always be TypeString.
+			// If not, we are silently ignoring it here.
+			lg.Printf("default fields term query: 'message' field is not a string: %s",
+				fieldVal.String())
+			stack.Push(false)
+			return
+		}
+	}
 	stack.Push(false)
 }
 func (q rpnDefaultFieldsTermsQuery) String() string {
-	// XXX update when switch to term
-	return fmt.Sprintf(`rpnDefaultFieldsTermsQuery{"%s"}`, strings.Join(q.terms, `" "`))
+	var termStrs []string
+	for _, t := range q.terms {
+		termStrs = append(termStrs, t.String())
+	}
+	return fmt.Sprintf(`rpnDefaultFieldsTermsQuery{"%s"}`, strings.Join(termStrs, " "))
 }
 
 type rpnGtRangeQuery struct {

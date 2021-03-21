@@ -362,34 +362,41 @@ func parseBeforeQuery(p *parser) parserStateFn {
 		p.stageBoolOp(tok)
 		p.incompleteBoolOp = true
 		return parseBeforeQuery
-	// TODO: support tokTypeQuotedLiteral here for quoted *fields*
-	case tokTypeUnquotedLiteral:
+	case tokTypeUnquotedLiteral, tokTypeQuotedLiteral:
 		p.incompleteBoolOp = false
 		switch tok2 := p.peek(); tok2.typ {
 		case tokTypeError:
 			return parseErrorTok
 		case tokTypeGt, tokTypeGte, tokTypeLt, tokTypeLte:
 			// E.g.: `a.field >= 100`, `some.date.field < "2021-02"`
+			if tok.typ == tokTypeQuotedLiteral {
+				return p.errorfAt(tok.pos, "a *quoted* field for a range query is not yet supported")
+			}
 			p.field = &tok
 			return parseRangeQuery
 		case tokTypeColon:
 			// E.g.: `foo:value1 value2`, `foo:(a or b)`, `foo:(a and b and c)`,
 			// `foo:*`
+			if tok.typ == tokTypeQuotedLiteral {
+				return p.errorfAt(tok.pos, "a *quoted* field for a term query is not yet supported")
+			}
 			p.field = &tok
 			return parseTermsQuery
 		default:
 			// E.g.: `foo bar baz`
 			// No range operator and no colon means this is a query without
 			// a field name. In Kibana, this matches against "default fields".
-			var termTok token
-			terms := []string{tok.val}
+			termTok := tok
+			var terms []term
 			for {
-				termTok = p.next()
 				if termTok.typ == tokTypeUnquotedLiteral {
-					terms = append(terms, termTok.val)
+					terms = append(terms, newTerm(termTok.val))
+				} else if termTok.typ == tokTypeQuotedLiteral {
+					terms = append(terms, newQuotedTerm(termTok.val))
 				} else {
 					break
 				}
+				termTok = p.next()
 			}
 			p.backup(termTok)
 			p.filter.addStep(&rpnDefaultFieldsTermsQuery{terms: terms})

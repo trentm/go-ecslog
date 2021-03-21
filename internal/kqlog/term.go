@@ -43,9 +43,8 @@ func (t term) String() string {
 func (t *term) MatchStringBytes(b []byte) bool {
 	if t.Wildcard {
 		return t.regexpVal.Match(b)
-	} else {
-		return t.Val == string(b)
 	}
+	return t.Val == string(b)
 }
 
 // GetBoolVal returns a boolean value for this term, if possible.

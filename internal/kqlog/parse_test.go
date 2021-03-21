@@ -27,20 +27,33 @@ var parseTestCases = []parseTestCase{
 		"",
 	},
 
-	// XXX update for `term` type usage
 	{
-		"terms query with no field name",
+		"default fields terms query",
 		"foo",
 		&Filter{steps: []rpnStep{
-			&rpnDefaultFieldsTermsQuery{terms: []string{"foo"}},
+			&rpnDefaultFieldsTermsQuery{terms: []term{newTerm("foo")}},
 		}},
 		"",
 	},
 	{
-		"terms query with no field name, multiple terms",
-		"foo bar baz",
+		"default fields terms query, multiple terms, quoted",
+		"foo bar \"eggs spam\"",
 		&Filter{steps: []rpnStep{
-			&rpnDefaultFieldsTermsQuery{terms: []string{"foo", "bar", "baz"}},
+			&rpnDefaultFieldsTermsQuery{terms: []term{
+				newTerm("foo"),
+				newTerm("bar"),
+				newQuotedTerm(`"eggs spam"`),
+			}},
+		}},
+		"",
+	},
+	{
+		"default fields terms query, quoted",
+		"\"eggs spam\"",
+		&Filter{steps: []rpnStep{
+			&rpnDefaultFieldsTermsQuery{terms: []term{
+				newQuotedTerm(`"eggs spam"`),
+			}},
 		}},
 		"",
 	},
@@ -167,11 +180,11 @@ var parseTestCases = []parseTestCase{
 		"operator precedence: and/or",
 		"a and b or c and d",
 		&Filter{steps: []rpnStep{
-			&rpnDefaultFieldsTermsQuery{terms: []string{"a"}},
-			&rpnDefaultFieldsTermsQuery{terms: []string{"b"}},
+			&rpnDefaultFieldsTermsQuery{terms: []term{newTerm("a")}},
+			&rpnDefaultFieldsTermsQuery{terms: []term{newTerm("b")}},
 			&rpnAnd{},
-			&rpnDefaultFieldsTermsQuery{terms: []string{"c"}},
-			&rpnDefaultFieldsTermsQuery{terms: []string{"d"}},
+			&rpnDefaultFieldsTermsQuery{terms: []term{newTerm("c")}},
+			&rpnDefaultFieldsTermsQuery{terms: []term{newTerm("d")}},
 			&rpnAnd{},
 			&rpnOr{},
 		}},
@@ -181,13 +194,13 @@ var parseTestCases = []parseTestCase{
 		"operator precedence: and/not/parens",
 		"a and not (b or c) and d",
 		&Filter{steps: []rpnStep{
-			&rpnDefaultFieldsTermsQuery{terms: []string{"a"}},
-			&rpnDefaultFieldsTermsQuery{terms: []string{"b"}},
-			&rpnDefaultFieldsTermsQuery{terms: []string{"c"}},
+			&rpnDefaultFieldsTermsQuery{terms: []term{newTerm("a")}},
+			&rpnDefaultFieldsTermsQuery{terms: []term{newTerm("b")}},
+			&rpnDefaultFieldsTermsQuery{terms: []term{newTerm("c")}},
 			&rpnOr{},
 			&rpnNot{},
 			&rpnAnd{},
-			&rpnDefaultFieldsTermsQuery{terms: []string{"d"}},
+			&rpnDefaultFieldsTermsQuery{terms: []term{newTerm("d")}},
 			&rpnAnd{},
 		}},
 		"",
@@ -200,6 +213,8 @@ var parseTestCases = []parseTestCase{
 func equalErrSubstr(err error, errSubstr string) bool {
 	if err == nil {
 		return errSubstr == ""
+	} else if errSubstr == "" {
+		return false
 	}
 	return strings.Contains(err.Error(), errSubstr)
 }
@@ -212,11 +227,25 @@ func TestParse(t *testing.T) {
 			// nil for logLevelLess arg because it isn't relevant for parsing.
 			p := newParser(tc.input, nil)
 			f, err := p.parse()
+			if err != nil {
+				t.Logf("  err: %s\n", err)
+			}
 			if f != nil {
 				t.Logf("  filter steps:\n")
 				for _, s := range f.steps {
 					t.Logf("    %s\n", s)
 				}
+			}
+			if !equalErrSubstr(err, tc.errSubstr) {
+				t.Errorf(
+					"%s:\n"+
+						"input:\n"+
+						"\t%s\n"+
+						"got error:\n"+
+						"\t%+v\n"+
+						"expected error with this substring:\n"+
+						"\t%q\n",
+					tc.name, tc.input, err, tc.errSubstr)
 			}
 			if !reflect.DeepEqual(f, tc.filter) {
 				t.Errorf(
@@ -228,17 +257,6 @@ func TestParse(t *testing.T) {
 						"expected filter:\n"+
 						"\t%v\n",
 					tc.name, tc.input, f, tc.filter)
-			}
-			if !equalErrSubstr(err, tc.errSubstr) {
-				t.Errorf(
-					"%s:\n"+
-						"input:\n"+
-						"\t%s\n"+
-						"got error:\n"+
-						"\t%+v\n"+
-						"expected error with this substring:\n"+
-						"\t%v\n",
-					tc.name, tc.input, err, tc.errSubstr)
 			}
 		})
 	}

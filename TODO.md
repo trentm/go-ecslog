@@ -6,19 +6,7 @@
     ecslog: error: bufio.Scanner: token too long
   The log line had a huge "message" field... so need a guard on each field size.
   https://stackoverflow.com/questions/21124327 suggests "bufio.Reader.ReadLine"
-- kqlog
-  - quoted literals in field names
-  - what about escapes in field names? The logic in newTerm perhaps doesn't belong there
-    or perhaps the newTerm can be used for the "field" in:
-        type rpnTermsQuery struct {
-          field string  // -> field term
-          terms []term
-        }
-  - XXXs in rpn.go: rpnDefaultFieldsTermsQuery
-  - wildcards in field: I'm not clear exactly what this should mean. In KQL
-    doc example "machine.os*" is to match "machine.os" and "machine.os.keyword".
-    That's not relevant for the log record matching case. Perhaps punt on
-    this one.
+- kqlog: TODO, XXX, Q:
 - `-x, --elide-fields' or something to remote from rendering
   Matching to *include* only given fields? Is this only about "extra" fields?
 - get examples from the other ecs-loggers, esp. zap has some differences
