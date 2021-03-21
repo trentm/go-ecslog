@@ -162,11 +162,25 @@ var lexTestCases = []lexTestCase{
 		mkToken(tokTypeUnquotedLiteral, "bar\\:"),
 		tokEOF,
 	}},
-	{"escapes: escaped operator", "foo:bar \\and", []token{
+	{"escapes: escaped operator and", "foo:bar \\and", []token{
 		mkToken(tokTypeUnquotedLiteral, "foo"),
 		tokColon,
 		mkToken(tokTypeUnquotedLiteral, "bar"),
 		mkToken(tokTypeUnquotedLiteral, "\\and"),
+		tokEOF,
+	}},
+	{"escapes: escaped operator or", "foo:bar \\or", []token{
+		mkToken(tokTypeUnquotedLiteral, "foo"),
+		tokColon,
+		mkToken(tokTypeUnquotedLiteral, "bar"),
+		mkToken(tokTypeUnquotedLiteral, "\\or"),
+		tokEOF,
+	}},
+	{"escapes: escaped operator not", "foo:bar \\not", []token{
+		mkToken(tokTypeUnquotedLiteral, "foo"),
+		tokColon,
+		mkToken(tokTypeUnquotedLiteral, "bar"),
+		mkToken(tokTypeUnquotedLiteral, "\\not"),
 		tokEOF,
 	}},
 	{"escapes: invalid end in backslash", "foo:bar\\", []token{

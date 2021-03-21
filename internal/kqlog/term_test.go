@@ -73,6 +73,17 @@ var termTestCases = []termTestCase{
 	{"escape special {", "foo\\{", term{Val: "foo{"}, false},
 	{"escape special }", "foo\\}", term{Val: "foo}"}, false},
 	{"non-escape e", "foo\\e", term{Val: "foo\\e"}, false},
+
+	// Escaped keywords
+	{"escape keyword and", "\\and", term{Val: "and"}, false},
+	{"escape keyword or", "\\or", term{Val: "or"}, false},
+	{"escape keyword not", "\\not", term{Val: "not"}, false},
+	{"do NOT escape keyword and-prefix", "\\andMORE", term{Val: "\\andMORE"}, false},
+	{"do NOT escape keyword or-prefix", "\\orMORE", term{Val: "\\orMORE"}, false},
+	{"do NOT escape keyword not-prefix", "\\notMORE", term{Val: "\notMORE"}, false},
+
+	// Quoted terms
+	// XXX
 }
 
 func TestTerm(t *testing.T) {

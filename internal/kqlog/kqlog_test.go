@@ -55,9 +55,21 @@ var matchTestCases = []matchTestCase{
 		true,
 	},
 	{
-		"terms query: quoted values",
+		"terms query: quoted values 1",
 		fastjson.MustParse(`{"foo": "bar baz"}`),
 		`foo: "bar baz"`,
+		true,
+	},
+	{
+		"terms query: quoted values 2",
+		fastjson.MustParse(`{"foo": "bob"}`),
+		`foo: "b*b"`,
+		false,
+	},
+	{
+		"terms query: quoted values 3",
+		fastjson.MustParse(`{"foo": "b*b"}`),
+		`foo: "b*b"`,
 		true,
 	},
 

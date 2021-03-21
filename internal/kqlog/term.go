@@ -137,22 +137,22 @@ func newTerm(val string) term {
 			}
 			// See if escaping whitespace, special char, or keyword.
 			nextCh := val[i+1]
-			if ws, ok := whitespaceFromEscapeChar[nextCh]; ok {
+			if i+2 == len(val)-1 && val[i+1:] == "or" {
+				chunk.WriteString("or")
+				i += 2
+			} else if i+3 == len(val)-1 && val[i+1:] == "and" {
+				chunk.WriteString("and")
+				i += 3
+			} else if i+3 == len(val)-1 && val[i+1:] == "not" {
+				// Must check for `\not` before checking for `\n`.
+				chunk.WriteString("not")
+				i += 3
+			} else if ws, ok := whitespaceFromEscapeChar[nextCh]; ok {
 				chunk.WriteByte(ws)
 				i++
 			} else if _, ok := unquotedSpecialChars[nextCh]; ok {
 				chunk.WriteByte(nextCh)
 				i++
-				// XXX does the following allow `\orfoo`, `\andfoo`, `\notfoo`? i.e. trailing content? It shouldn't
-			} else if i+2 < len(val) && val[i+1:i+3] == "or" {
-				chunk.WriteString("or")
-				i += 2
-			} else if i+3 < len(val) && val[i+1:i+4] == "and" {
-				chunk.WriteString("and")
-				i += 3
-			} else if i+3 < len(val) && val[i+1:i+4] == "not" {
-				chunk.WriteString("not")
-				i += 3
 			} else {
 				chunk.WriteByte(ch)
 			}
