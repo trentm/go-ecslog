@@ -34,7 +34,7 @@ var flagLevel = flags.StringP("level", "l", "",
 	`Filter out log records below the given level.
 This supports level names and ordering from common
 logging frameworks.`)
-var flagKQL = flags.StringP("kql", "q", "",
+var flagKQL = flags.StringP("kql", "k", "",
 	`Filter log records with the given KQL query.
 E.g.: 'url.path:/foo and request.method:post'
 www.elastic.co/guide/en/kibana/current/kuery-query.html`)
