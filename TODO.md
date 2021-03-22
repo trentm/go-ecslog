@@ -6,12 +6,13 @@
     ecslog: error: bufio.Scanner: token too long
   The log line had a huge "message" field... so need a guard on each field size.
   https://stackoverflow.com/questions/21124327 suggests "bufio.Reader.ReadLine"
+- GH actions for tests, lint, vet
+- README needs a once-over
 - `-x, --elide-fields' or something to remote from rendering
   Matching to *include* only given fields? Is this only about "extra" fields?
 - get examples from the other ecs-loggers, esp. zap has some differences
-- bug: crash on gargantuan string in a single record (details on other computer I think)
 - config via github.com/BurntSushi/toml ?
-- clear out all panic()s and probably lo?g.Fatal()s. Perhaps remove from 'lg' pkg
+- clear out all panic()s and probably lo?g.Fatal()s? Perhaps remove from 'lg' pkg
 
 # mvp
 
@@ -48,8 +49,8 @@
 - "--strict" field to restrict to just ecslog output (elide non-ECS format lines)
 - -x,--exclude-fields option to remove the given fields from the rendering
   of any line, or -i, --include-fields?
+- anything I should do for `go doc`?
 - coloring for added zap and other levels (test case for this)
-- --version flag
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with
 - option to highlight a matching string? or leave that to the pager? Could
