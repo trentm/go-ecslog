@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the semver version of this tool.
-const Version = "0.0.0"
+const Version = "0.1.0"
 
 // TODO: make this configurable
 const maxLineLen = 16384

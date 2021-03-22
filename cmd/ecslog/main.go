@@ -45,7 +45,7 @@ func printError(msg string) {
 
 func printVersion() {
 	fmt.Printf("ecslog %s\n", ecslog.Version)
-	// TODO: when have public URL: fmt.Printf("https://github.com/...\n")
+	fmt.Printf("https://github.com/trentm/go-ecslog\n")
 }
 
 const usageHead = `usage:
