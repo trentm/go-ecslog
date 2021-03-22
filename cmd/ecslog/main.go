@@ -8,8 +8,6 @@ import (
 	"os"
 
 	"github.com/spf13/pflag"
-	"go.elastic.co/ecszap"
-	"go.uber.org/zap"
 
 	"github.com/trentm/go-ecslog/internal/ecslog"
 )
@@ -36,6 +34,10 @@ var flagLevel = flags.StringP("level", "l", "",
 	`Filter out log records below the given level.
 This supports level names and ordering from common
 logging frameworks.`)
+var flagKQL = flags.StringP("kql", "k", "",
+	`Filter log records with the given KQL query.
+E.g.: 'url.path:/foo and request.method:post'
+www.elastic.co/guide/en/kibana/current/kuery-query.html`)
 
 func printError(msg string) {
 	fmt.Fprintf(os.Stderr, "ecslog: error: %s\n", msg)
@@ -43,7 +45,7 @@ func printError(msg string) {
 
 func printVersion() {
 	fmt.Printf("ecslog %s\n", ecslog.Version)
-	// TODO: when have public URL: fmt.Printf("https://github.com/...\n")
+	fmt.Printf("https://github.com/trentm/go-ecslog\n")
 }
 
 const usageHead = `usage:
@@ -89,16 +91,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Setup logging.
-	// https://www.elastic.co/guide/en/ecs-logging/go-zap/current/setup.html
-	encoderConfig := ecszap.NewDefaultEncoderConfig()
-	logLevel := zap.FatalLevel
-	if *flagSelfDebug {
-		logLevel = zap.DebugLevel
-	}
-	core := ecszap.NewCore(encoderConfig, os.Stderr, logLevel)
-	logger := zap.New(core, zap.AddCaller()).Named("ecslog")
-
 	shouldColorize := "auto"
 	if *flagColor && *flagNoColor {
 		printError("cannot specify both --color and --no-color")
@@ -110,7 +102,7 @@ func main() {
 		shouldColorize = "no"
 	}
 
-	r, err := ecslog.NewRenderer(logger, shouldColorize, *flagColorScheme, *flagFormatName)
+	r, err := ecslog.NewRenderer(shouldColorize, *flagColorScheme, *flagFormatName)
 	if err != nil {
 		printError(err.Error())
 		printUsage()
@@ -118,10 +110,16 @@ func main() {
 	}
 	// TODO: warn (err?) if flagLevel is an unknown level (per levelValFromName)
 	r.SetLevelFilter(*flagLevel)
+	err = r.SetKQLFilter(*flagKQL)
+	if err != nil {
+		printError("invalid KQL: " + err.Error())
+		// TODO: --help-kql option, then refer to it here
+		os.Exit(1)
+	}
 
 	if len(flags.Args()) == 0 {
 		f = os.Stdin
-		err = r.RenderFile(f)
+		err = r.RenderFile(f, os.Stdout)
 		if err != nil {
 			errs = append(errs, err)
 		}
@@ -132,10 +130,11 @@ func main() {
 				errs = append(errs, err)
 				continue
 			}
-			err = r.RenderFile(f)
+			err = r.RenderFile(f, os.Stdout)
 			if err != nil {
 				errs = append(errs, err)
 			}
+			f.Close()
 		}
 	}
 

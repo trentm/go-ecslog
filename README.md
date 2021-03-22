@@ -83,3 +83,14 @@ elide some fields, typically for compactness.
 - "http": A lossless format similar to "default", but attempts to render
   HTTP-related ECS fields in HTTP request and response text representation.
   TODO: not yet implemented.
+
+
+# Troubleshooting
+
+The `ECSLOG_DEBUG` environment variable can be set to get some internal
+debugging information on stderr. For example:
+
+    ECSLOG_DEBUG=1 ecslog ...
+
+Internal debug logging is disabled if `ECSLOG_DEBUG` is unset, or is set
+to one of: the empty string, "0", or "false".

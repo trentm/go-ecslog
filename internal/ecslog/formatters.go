@@ -3,10 +3,11 @@ package ecslog
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/trentm/go-ecslog/internal/ansipainter"
+	"github.com/trentm/go-ecslog/internal/jsonutils"
+	"github.com/trentm/go-ecslog/internal/lg"
 	"github.com/valyala/fastjson"
 )
 
@@ -18,6 +19,8 @@ type Formatter interface {
 type defaultFormatter struct{}
 
 func (f *defaultFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
+	jsonutils.ExtractValue(rec, "ecs", "version")
+	jsonutils.ExtractValue(rec, "log", "level")
 	formatDefaultTitleLine(r, rec, b)
 
 	// Render the remaining fields:
@@ -41,6 +44,9 @@ func (f *defaultFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 type compactFormatter struct{}
 
 func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
+	jsonutils.ExtractValue(rec, "ecs", "version")
+	jsonutils.ExtractValue(rec, "log", "level")
+
 	formatDefaultTitleLine(r, rec, b)
 
 	// Render the remaining fields:
@@ -61,12 +67,10 @@ func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 		// 1. It doesn't include spacing that ultimately is used, so is off by
 		//    some number of chars.
 		// 2. I'm guessing this involves more allocs that could be done by
-		//    maintaining a width cound and doing a walk through equivalent to
-		// 	  `formatJSONValue`.
-		// TODO: do this walk through, can early abort if over width limit.
-		// TODO: can we determine current terminal width rather than hardcode 80?
+		//    maintaining a width count and doing a walk through equivalent to
+		//	  `formatJSONValue`.
 		vStr := v.String()
-		// 80 (terminal width) - 8 (indentation) - length of `k` - len(": ")
+		// 80 (quotable width) - 8 (indentation) - length of `k` - len(": ")
 		if len(vStr) < 80-8-len(k)-2 {
 			formatJSONValue(b, v, "    ", "    ", r.painter, true)
 		} else {
@@ -77,9 +81,22 @@ func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 }
 
 func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
-	logLogger := dottedGetBytes(rec, "log", "logger")
-	serviceName := dottedGetBytes(rec, "service", "name")
-	hostHostname := dottedGetBytes(rec, "host", "hostname")
+	var val *fastjson.Value
+	var logLogger []byte
+	if val = jsonutils.ExtractValueOfType(rec, fastjson.TypeString, "log", "logger"); val != nil {
+		logLogger = val.GetStringBytes()
+	}
+	var serviceName []byte
+	if val = jsonutils.ExtractValueOfType(rec, fastjson.TypeString, "service", "name"); val != nil {
+		serviceName = val.GetStringBytes()
+	}
+	var hostHostname []byte
+	if val = jsonutils.ExtractValueOfType(rec, fastjson.TypeString, "host", "hostname"); val != nil {
+		hostHostname = val.GetStringBytes()
+	}
+
+	timestamp := jsonutils.ExtractValue(rec, "@timestamp").GetStringBytes()
+	message := jsonutils.ExtractValue(rec, "message").GetStringBytes()
 
 	// Title line pattern:
 	//
@@ -94,7 +111,7 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 	//   typical pino:    [@timestamp] LEVEL (pid on host): message
 	//   typical winston: [@timestamp] LEVEL: message
 	b.WriteByte('[')
-	b.Write(r.timestamp)
+	b.Write(timestamp)
 	b.WriteString("] ")
 	r.painter.Paint(b, r.logLevel)
 	fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))
@@ -124,7 +141,7 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 	}
 	b.WriteString(": ")
 	r.painter.Paint(b, "message")
-	b.Write(r.message)
+	b.Write(message)
 	r.painter.Reset(b)
 }
 
@@ -213,7 +230,7 @@ func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 		b.WriteString(v.String())
 		painter.Reset(b)
 	default:
-		log.Fatalf("unexpected JSON type: %s", v.Type())
+		lg.Fatalf("unexpected JSON type: %s", v.Type())
 	}
 }
 
@@ -231,12 +248,16 @@ func (f *ecsFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings
 type simpleFormatter struct{}
 
 func (f *simpleFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
+	jsonutils.ExtractValue(rec, "ecs", "version")
+	jsonutils.ExtractValue(rec, "log", "level")
+	message := jsonutils.ExtractValue(rec, "message").GetStringBytes()
+
 	r.painter.Paint(b, r.logLevel)
 	fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))
 	r.painter.Reset(b)
 	b.WriteString(": ")
 	r.painter.Paint(b, "message")
-	b.Write(r.message)
+	b.Write(message)
 	r.painter.Reset(b)
 
 	// Ellipsis if there are more fields.

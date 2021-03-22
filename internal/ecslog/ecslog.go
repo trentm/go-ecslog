@@ -1,38 +1,40 @@
 package ecslog
 
+// Shared stuff for `ecslog` that isn't specific to the CLI.
+
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
 
 	"github.com/mattn/go-isatty"
 	"github.com/trentm/go-ecslog/internal/ansipainter"
+	"github.com/trentm/go-ecslog/internal/jsonutils"
+	"github.com/trentm/go-ecslog/internal/kqlog"
+	"github.com/trentm/go-ecslog/internal/lg"
 	"github.com/valyala/fastjson"
-	"go.uber.org/zap"
 )
 
-// Shared stuff for `ecslog` that isn't specific to the CLI.
-
 // Version is the semver version of this tool.
-const Version = "0.0.0"
+const Version = "0.1.0"
 
+// TODO: make this configurable
 const maxLineLen = 16384
 
 // Renderer is the class used to drive ECS log rendering (aka pretty printing).
 type Renderer struct {
-	Log         *zap.Logger // singleton internal logger for an `ecslog` run
-	levelFilter string
 	parser      fastjson.Parser
 	painter     *ansipainter.ANSIPainter
 	formatName  string
 	formatter   Formatter
+	levelFilter string
+	kqlFilter   *kqlog.Filter
 
-	line      string // the raw input line
-	logLevel  string // extracted "log.level" for the current record
-	timestamp []byte // extracted "@timestamp" for the current record
-	message   []byte // extracted "message" for the current record
+	line     string // the raw input line
+	logLevel string // cached "log.level", read during isECSLoggingRecord
 }
 
 // NewRenderer returns a new ECS logging log renderer.
@@ -43,7 +45,7 @@ type Renderer struct {
 //   is a TTY), "yes", or "no"
 // - `colorScheme` is the name of one of the colors schemes in
 //   ansipainter.PainterFromName
-func NewRenderer(logger *zap.Logger, shouldColorize, colorScheme, formatName string) (*Renderer, error) {
+func NewRenderer(shouldColorize, colorScheme, formatName string) (*Renderer, error) {
 	// Get appropriate "painter" for terminal coloring.
 	var painter *ansipainter.ANSIPainter
 	if shouldColorize == "auto" {
@@ -83,12 +85,9 @@ func NewRenderer(logger *zap.Logger, shouldColorize, colorScheme, formatName str
 			formatName, strings.Join(known, ", "))
 	}
 
-	logger.Debug("create renderer",
-		zap.String("formatName", formatName),
-		zap.String("shouldColorize", shouldColorize),
-		zap.String("colorScheme", colorScheme))
+	lg.Printf("create renderer: formatName=%q, shouldColorize=%q, colorScheme=%q\n",
+		formatName, shouldColorize, colorScheme)
 	return &Renderer{
-		Log:        logger,
 		painter:    painter,
 		formatName: formatName,
 		formatter:  formatter,
@@ -102,8 +101,17 @@ func (r *Renderer) SetLevelFilter(level string) {
 	}
 }
 
+// SetKQLFilter ... TODO:doc
+func (r *Renderer) SetKQLFilter(kql string) error {
+	var err error
+	if kql != "" {
+		r.kqlFilter, err = kqlog.NewFilter(kql, LogLevelLess)
+	}
+	return err
+}
+
 // levelValFromName is a best-effort ordering of levels in common usage in
-// logging frameworks that might be used in ECS format. See `ECSLevelLess`
+// logging frameworks that might be used in ECS format. See `LogLevelLess`
 // below. (The actual int values are only used internally and can change between
 // versions.)
 //
@@ -122,14 +130,14 @@ var levelValFromName = map[string]int{
 	"fatal":   80,
 }
 
-// ECSLevelLess returns true iff level1 is less than level2.
+// LogLevelLess returns true iff level1 is less than level2.
 //
 // Because ECS doesn't mandate a set of log level names for the "log.level"
 // field, nor any specific ordering of those log levels, this is a best
 // effort based on names and ordering from common logging frameworks.
 // If a level name is unknown, this returns false. Level names are considered
 // case-insensitive.
-func ECSLevelLess(level1, level2 string) bool {
+func LogLevelLess(level1, level2 string) bool {
 	val1, ok := levelValFromName[strings.ToLower(level1)]
 	if !ok {
 		return false
@@ -141,104 +149,73 @@ func ECSLevelLess(level1, level2 string) bool {
 	return val1 < val2
 }
 
-// dottedGetBytes looks up key "$aStr.$bStr" in the given record and removes
-// those entries from the record.
-func dottedGetBytes(rec *fastjson.Value, aStr, bStr string) []byte {
-	var abBytes []byte
-
-	// Try `{"a": {"b": <value>}}`.
-	aObj := rec.GetObject(aStr)
-	if aObj != nil {
-		abVal := aObj.Get(bStr)
-		if abVal != nil {
-			abBytes = abVal.GetStringBytes()
-			aObj.Del(bStr)
-			if aObj.Len() == 0 {
-				rec.Del(aStr)
-			}
-		}
-	}
-
-	// Try `{"a.b": <value>}`.
-	if abBytes == nil {
-		abStr := aStr + "." + bStr
-		abBytes = rec.GetStringBytes(abStr)
-		if abBytes != nil {
-			rec.Del(abStr)
-		}
-	}
-
-	return abBytes
-}
-
 // isECSLoggingRecord returns true iff the given `rec` has the required
-// ecs-logging fields.
+// ecs-logging fields: @timestamp, message, ecs.version, and log.level (all
+// strings).
 //
-// It also *mutates* the given Renderer and `rec` record: populating `r`
-// with the extracted core fields, while deleting those fields from `rec`.
-// This is for performance, to avoid having to lookup those fields twice.
+// Side-effect: r.logLevel is cached on the Renderer for subsequent use.
 func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
 	timestamp := rec.GetStringBytes("@timestamp")
 	if timestamp == nil {
 		return false
 	}
-	r.timestamp = timestamp
-	rec.Del("@timestamp")
 
 	message := rec.GetStringBytes("message")
 	if message == nil {
 		return false
 	}
-	r.message = message
-	rec.Del("message")
 
-	ecsVersion := dottedGetBytes(rec, "ecs", "version")
-	if ecsVersion == nil {
+	ecsVersion := jsonutils.LookupValue(rec, "ecs", "version")
+	if ecsVersion == nil || ecsVersion.Type() != fastjson.TypeString {
 		return false
 	}
 
-	logLevel := dottedGetBytes(rec, "log", "level")
-	if logLevel == nil {
+	logLevel := jsonutils.LookupValue(rec, "log", "level")
+	if logLevel == nil || logLevel.Type() != fastjson.TypeString {
 		return false
 	}
-	r.logLevel = string(logLevel)
+	r.logLevel = string(logLevel.GetStringBytes())
 
 	return true
 }
 
-// RenderFile renders log records in the given open file stream.
-func (r *Renderer) RenderFile(f *os.File) error {
+// RenderFile renders log records from the given open file stream to the given
+// output stream (typically os.Stdout).
+func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 	var b strings.Builder
-	scanner := bufio.NewScanner(f)
+	scanner := bufio.NewScanner(in)
 	for scanner.Scan() {
 		// TODO perf: use scanner.Bytes https://golang.org/pkg/bufio/#Scanner.Bytes
 		line := scanner.Text()
-		// TODO: allow leading whitespace
 		if len(line) > maxLineLen || len(line) == 0 || line[0] != '{' {
-			fmt.Println(line)
+			fmt.Fprintln(out, line)
 			continue
 		}
 
 		rec, err := r.parser.Parse(line)
 		if err != nil {
-			r.Log.Debug("line parse error", zap.Error(err))
-			fmt.Println(line)
+			lg.Printf("line parse error: %s\n", err)
+			fmt.Fprintln(out, line)
 			continue
 		}
 
 		if !r.isECSLoggingRecord(rec) {
-			fmt.Println(line)
+			fmt.Fprintln(out, line)
 			continue
 		}
 		r.line = line
 
-		// `--level info` will drop an log records less than log.level=info.
-		if r.levelFilter != "" && ECSLevelLess(r.logLevel, r.levelFilter) {
+		// `--level info` will drop any log records less than log.level=info.
+		if r.levelFilter != "" && LogLevelLess(r.logLevel, r.levelFilter) {
+			continue
+		}
+
+		if r.kqlFilter != nil && !r.kqlFilter.Match(rec) {
 			continue
 		}
 
 		r.formatter.formatRecord(r, rec, &b)
-		fmt.Println(b.String())
+		fmt.Fprintln(out, b.String())
 		b.Reset()
 	}
 	return scanner.Err()
