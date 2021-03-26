@@ -74,7 +74,6 @@ func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 		if len(vStr) < 80-8-len(k)-2 {
 			formatJSONValue(b, v, "    ", "    ", r.painter, true)
 		} else {
-			b.WriteString(fmt.Sprintf("(%d) ", len(vStr)))
 			formatJSONValue(b, v, "    ", "    ", r.painter, false)
 		}
 	})
