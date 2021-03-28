@@ -1,0 +1,3 @@
+{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"this is valid"}
+{"log.level":"info","ecs":{"version":"1.5.0"},"message":"this is not"}
+nor is this

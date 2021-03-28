@@ -50,6 +50,13 @@ var mainTestCases = []mainTestCase{
 		nil,
 	},
 	{
+		"ecslog --strict ...",
+		[]string{"ecslog", "--strict", "./testdata/strict.log"},
+		0,
+		regexp.MustCompile(`^\[2021-01-19T22:51:12.142Z\]  INFO: this is valid\n$`),
+		nil,
+	},
+	{
 		// In earlier versions ecslog was using bufio.Scanner. A line >64k long
 		// would error out with 'bufio.Scanner: token too long'. Here we expect
 		// ecslog to handle this, and to properly render other lines.

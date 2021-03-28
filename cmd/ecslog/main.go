@@ -20,6 +20,20 @@ var flagSelfDebug = flags.Bool("self-debug", false, // hidden
 	`Write debug output from ecslog itself to stderr.
 E.g. 'ecslog ... --self-debug >/dev/null 2>>(ecslog)'`)
 
+// Filtering options.
+var flagLevel = flags.StringP("level", "l", "",
+	`Filter out log records below the given level.
+This supports level names and ordering from common
+logging frameworks.`)
+var flagKQL = flags.StringP("kql", "k", "",
+	`Filter log records with the given KQL query.
+E.g.: 'url.path:/foo and request.method:post'
+www.elastic.co/guide/en/kibana/current/kuery-query.html`)
+var flagStrict = flags.Bool("strict", false,
+	`Suppress all but legal ECS log lines. By default
+non-JSON and non-ecs-logging lines are passed through.`)
+
+// Formatting options.
 var flagFormatName = flags.StringP("format", "f", "default",
 	`Output format for rendered ECS log records.
 `)
@@ -29,15 +43,6 @@ done if stdout is a TTY.`)
 var flagNoColor = flags.Bool("no-color", false, "Force no coloring of output.")
 var flagColorScheme = flags.StringP("color-scheme", "c", "default",
 	"Color scheme to use, if colorizing.") // hidden
-
-var flagLevel = flags.StringP("level", "l", "",
-	`Filter out log records below the given level.
-This supports level names and ordering from common
-logging frameworks.`)
-var flagKQL = flags.StringP("kql", "k", "",
-	`Filter log records with the given KQL query.
-E.g.: 'url.path:/foo and request.method:post'
-www.elastic.co/guide/en/kibana/current/kuery-query.html`)
 
 func printError(msg string) {
 	fmt.Fprintf(os.Stderr, "ecslog: error: %s\n", msg)
@@ -116,6 +121,7 @@ func main() {
 		// TODO: --help-kql option, then refer to it here
 		os.Exit(1)
 	}
+	r.SetStrictFilter(*flagStrict)
 
 	if len(flags.Args()) == 0 {
 		f = os.Stdin

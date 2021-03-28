@@ -32,6 +32,7 @@ type Renderer struct {
 	formatter   Formatter
 	levelFilter string
 	kqlFilter   *kqlog.Filter
+	strict      bool
 
 	line     []byte // the raw input line
 	logLevel string // cached "log.level", read during isECSLoggingRecord
@@ -108,6 +109,12 @@ func (r *Renderer) SetKQLFilter(kql string) error {
 		r.kqlFilter, err = kqlog.NewFilter(kql, LogLevelLess)
 	}
 	return err
+}
+
+// SetStrictFilter tells the renderer whether to strictly suppress input lines
+// that are not valid ecs-logging records.
+func (r *Renderer) SetStrictFilter(strict bool) {
+	r.strict = strict
 }
 
 // levelValFromName is a best-effort ordering of levels in common usage in
@@ -219,10 +226,12 @@ func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 		if wasPrefix || isPrefix {
 			// This is a line > maxLineLen, so we just want to print it
 			// unchanged. The current line continues until `isPrefix == false`.
-			out.Write(line)
 			wasPrefix = isPrefix
-			if !isPrefix {
-				out.Write(eol)
+			if !r.strict {
+				out.Write(line)
+				if !isPrefix {
+					out.Write(eol)
+				}
 			}
 			continue
 		}
@@ -230,22 +239,28 @@ func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 		// For now, do *not* support lines with leading whitespace. Happy to
 		// reconsider if there is a real use case.
 		if len(line) == 0 || line[0] != '{' {
-			out.Write(line)
-			out.Write(eol)
+			if !r.strict {
+				out.Write(line)
+				out.Write(eol)
+			}
 			continue
 		}
 
 		rec, err := r.parser.ParseBytes(line)
 		if err != nil {
 			lg.Printf("line parse error: %s\n", err)
-			out.Write(line)
-			out.Write(eol)
+			if !r.strict {
+				out.Write(line)
+				out.Write(eol)
+			}
 			continue
 		}
 
 		if !r.isECSLoggingRecord(rec) {
-			out.Write(line)
-			out.Write(eol)
+			if !r.strict {
+				out.Write(line)
+				out.Write(eol)
+			}
 			continue
 		}
 		r.line = line

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add `--strict` option that will suppress input lines that are not valid
+  ecs-logging records. Normally non-ecs-logging records are passed through
+  unchanged.
+
 - Support there not being a "message" field (allowed in ecs-logging spec
   in https://github.com/elastic/ecs-logging/pull/55).
 
