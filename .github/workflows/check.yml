@@ -1,0 +1,21 @@
+name: Check
+on: [push, pull_request]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '1.16.x'
+    - uses: actions/checkout@v2
+    - name: vet
+      run: go vet ./cmd/... ./internal/...
+    - name: golint
+      run: golint ./cmd/... ./internal/...
+    - name: fmt
+      run: |
+        changes=$(find . -name "*.go" | xargs goimports -d)
+        if [[ -n "$changes" ]]; then
+          echo "$changes"
+          exit 1
+        fi

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sort"
 	"strings"
+	"sort"
 
 	"github.com/mattn/go-isatty"
 	"github.com/trentm/go-ecslog/internal/ansipainter"
@@ -20,6 +20,7 @@ import (
 
 // Version is the semver version of this tool.
 const Version = "0.1.0"
+
 
 // TODO: make these configurable
 const maxLineLen = 16384
@@ -86,7 +87,7 @@ func NewRenderer(shouldColorize, colorScheme, formatName string) (*Renderer, err
 			formatName, strings.Join(known, ", "))
 	}
 
-	lg.Printf("create renderer: formatName=%q, shouldColorize=%q, colorScheme=%q\n",
+	lg.Printf("%s create renderer: formatName=%q, shouldColorize=%q, colorScheme=%q\n",
 		formatName, shouldColorize, colorScheme)
 	return &Renderer{
 		painter:    painter,
@@ -95,7 +96,6 @@ func NewRenderer(shouldColorize, colorScheme, formatName string) (*Renderer, err
 	}, nil
 }
 
-// SetLevelFilter ... TODO:doc
 func (r *Renderer) SetLevelFilter(level string) {
 	if level != "" {
 		r.levelFilter = level
