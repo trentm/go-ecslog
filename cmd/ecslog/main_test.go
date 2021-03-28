@@ -5,13 +5,19 @@ import (
 	"log"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"testing"
 )
 
-const EXE = "./ecslog-for-test"
+var EXE string
 
 // init builds an `ecslog` binary for testing.
 func init() {
+	if runtime.GOOS == "windows" {
+		EXE = ".\\ecslog-for-test.exe"
+	} else {
+		EXE = "./ecslog-for-test"
+	}
 	c := exec.Command("go", "build", "-o", EXE, ".")
 	err := c.Run()
 	if err != nil {
@@ -73,7 +79,11 @@ func TestMain(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("-- `ecslog` test case %q\n", tc.name)
 			t.Logf("  argv: %q\n", tc.argv)
-			cmd := exec.Command(EXE, tc.argv[1:]...)
+			exe := tc.argv[0]
+			if exe == "ecslog" {
+				exe = EXE
+			}
+			cmd := exec.Command(exe, tc.argv[1:]...)
 			var e bytes.Buffer
 			var o bytes.Buffer
 			cmd.Stderr = &e

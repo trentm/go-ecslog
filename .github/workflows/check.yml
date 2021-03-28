@@ -1,0 +1,45 @@
+name: Check
+
+on:
+  push:
+    branches:
+    - main
+    paths-ignore:
+    - '*.md'
+  pull_request:
+    branches:
+    - main
+    paths-ignore:
+    - '*.md'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-go@v2
+      with:
+        go-version: '1.16.x'
+    - name: install tools
+      # With go 1.16 we can install tools without mucking with go.mod.
+      # https://tip.golang.org/doc/go1.16#modules
+      run: |
+        go install golang.org/x/lint/golint@latest
+        go install golang.org/x/tools/cmd/goimports@latest
+    - uses: actions/checkout@v2
+    - name: vet
+      run: go vet ./cmd/... ./internal/...
+    - name: golint
+      run: golint -set_exit_status ./cmd/... ./internal/...
+    - name: fmt (goimports)
+      run: |
+        # error out if there are format changes
+        changes=$(find . -name "*.go" | xargs goimports -d)
+        if [[ -n "$changes" ]]; then
+          echo "$changes"
+          exit 1
+        fi
+    - name: sanity check
+      run: |
+        go version
+        git status
+        git diff
