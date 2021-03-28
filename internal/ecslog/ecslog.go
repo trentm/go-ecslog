@@ -87,7 +87,7 @@ func NewRenderer(shouldColorize, colorScheme, formatName string) (*Renderer, err
 			formatName, strings.Join(known, ", "))
 	}
 
-	lg.Printf("%s create renderer: formatName=%q, shouldColorize=%q, colorScheme=%q\n",
+	lg.Printf("create renderer: formatName=%q, shouldColorize=%q, colorScheme=%q\n",
 		formatName, shouldColorize, colorScheme)
 	return &Renderer{
 		painter:    painter,

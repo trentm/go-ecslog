@@ -13,10 +13,17 @@ test:
 .PHONY: check
 check:
 	go vet ./cmd/... ./internal/...
+	golint ./cmd/... ./internal/...
+	@echo "# check fmt with goimports..."
+	@changes=$$(find . -name "*.go" | xargs goimports -d) && \
+		if [[ -n "$$changes" ]]; then \
+			echo "$$changes"; \
+			exit 1; \
+		fi
 
 .PHONY: fmt
 fmt:
-	go fmt ./cmd/... ./internal/...
+	find . -name "*.go" | xargs goimports -l -w
 
 .PHONY: rundemo
 rundemo:
