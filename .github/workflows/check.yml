@@ -20,7 +20,9 @@ jobs:
       with:
         go-version: '1.16.x'
     - name: install tools
-      run: go get -u golang.org/x/lint/golint
+      run: |
+        go get -u golang.org/x/lint/golint
+        go get -u golang.org/x/tools/cmd/goimports
     - uses: actions/checkout@v2
     - name: vet
       run: go vet ./cmd/... ./internal/...
