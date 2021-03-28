@@ -29,4 +29,4 @@ jobs:
     - name: golint
       run: golint ./cmd/... ./internal/...
     - name: fmt
-      run: find . -name "*.go" | xargs goimports -l
+      run: find . -name "*.go" | xargs goimports -l ; echo $?
