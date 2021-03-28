@@ -1,5 +1,17 @@
 name: Check
-on: [push, pull_request]
+
+on:
+  push:
+    branches:
+    - main
+    paths-ignore:
+    - '*.md'
+  pull_request:
+    branches:
+    - main
+    paths-ignore:
+    - '*.md'
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -13,9 +25,4 @@ jobs:
     - name: golint
       run: golint ./cmd/... ./internal/...
     - name: fmt
-      run: |
-        changes=$(find . -name "*.go" | xargs goimports -d)
-        if [[ -n "$changes" ]]; then
-          echo "$changes"
-          exit 1
-        fi
+      run: find . -name "*.go" | xargs goimports -l
