@@ -3,16 +3,21 @@ package main
 import (
 	"bytes"
 	"log"
-	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"testing"
 )
 
-const EXE = "." + string(os.PathSeparator) + "ecslog-for-test"
+var EXE string
 
 // init builds an `ecslog` binary for testing.
 func init() {
+	if runtime.GOOS == "windows" {
+		EXE = ".\\ecslog-for-test.exe"
+	} else {
+		EXE = "./ecslog-for-test"
+	}
 	c := exec.Command("go", "build", "-o", EXE, ".")
 	err := c.Run()
 	if err != nil {
