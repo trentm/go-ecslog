@@ -95,6 +95,8 @@ func NewRenderer(shouldColorize, colorScheme, formatName string) (*Renderer, err
 	}, nil
 }
 
+
+// SetLevelFilter ... TODO:doc
 func (r *Renderer) SetLevelFilter(level string) {
 	if level != "" {
 		r.levelFilter = level
