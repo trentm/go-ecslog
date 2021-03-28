@@ -80,7 +80,11 @@ func TestMain(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("-- `ecslog` test case %q\n", tc.name)
 			t.Logf("  argv: %q\n", tc.argv)
-			cmd := exec.Command(EXE, tc.argv[1:]...)
+			exe := tc.argv[0]
+			if exe == "ecslog" {
+				exe = EXE
+			}
+			cmd := exec.Command(exe, tc.argv[1:]...)
 			var e bytes.Buffer
 			var o bytes.Buffer
 			cmd.Stderr = &e
