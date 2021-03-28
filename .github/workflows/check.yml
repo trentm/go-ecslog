@@ -29,13 +29,7 @@ jobs:
     - name: vet
       run: go vet ./cmd/... ./internal/...
     - name: golint
-      run: |
-        # error out if there are lint results
-        results=$(golint ./cmd/... ./internal/...)
-        if [[ -n "$results" ]]; then
-          echo "$results"
-          exit 1
-        fi
+      run: golint -set_exit_status ./cmd/... ./internal/...
     - name: fmt (goimports)
       run: |
         # error out if there are format changes
