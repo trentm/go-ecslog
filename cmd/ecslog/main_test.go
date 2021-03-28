@@ -3,12 +3,13 @@ package main
 import (
 	"bytes"
 	"log"
+	"os"
 	"os/exec"
 	"regexp"
 	"testing"
 )
 
-const EXE = "./ecslog-for-test"
+const EXE = "." + string(os.PathSeparator) + "ecslog-for-test"
 
 // init builds an `ecslog` binary for testing.
 func init() {
