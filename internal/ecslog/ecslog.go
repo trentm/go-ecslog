@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"sort"
+	"strings"
 
 	"github.com/mattn/go-isatty"
 	"github.com/trentm/go-ecslog/internal/ansipainter"
@@ -20,7 +20,6 @@ import (
 
 // Version is the semver version of this tool.
 const Version = "0.1.0"
-
 
 // TODO: make these configurable
 const maxLineLen = 16384
