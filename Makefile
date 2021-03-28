@@ -18,9 +18,9 @@ check:
 fmt:
 	go fmt ./cmd/... ./internal/...
 
-.PHONY: run
-run:
-	go run ./cmd/ecslog
+.PHONY: rundemo
+rundemo:
+	go run ./cmd/ecslog demo.log
 
 .PHONY: tidy
 tidy:
@@ -29,3 +29,4 @@ tidy:
 .PHONY: clean
 clean:
 	rm -f ecslog
+	rm -f cmd/ecslog/ecslog-for-test

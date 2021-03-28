@@ -21,7 +21,7 @@ import (
 // Version is the semver version of this tool.
 const Version = "0.1.0"
 
-// TODO: make this configurable
+// TODO: make these configurable
 const maxLineLen = 16384
 
 // Renderer is the class used to drive ECS log rendering (aka pretty printing).
@@ -33,7 +33,7 @@ type Renderer struct {
 	levelFilter string
 	kqlFilter   *kqlog.Filter
 
-	line     string // the raw input line
+	line     []byte // the raw input line
 	logLevel string // cached "log.level", read during isECSLoggingRecord
 }
 
@@ -183,24 +183,69 @@ func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
 // output stream (typically os.Stdout).
 func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 	var b strings.Builder
-	scanner := bufio.NewScanner(in)
-	for scanner.Scan() {
-		// TODO perf: use scanner.Bytes https://golang.org/pkg/bufio/#Scanner.Bytes
-		line := scanner.Text()
-		if len(line) > maxLineLen || len(line) == 0 || line[0] != '{' {
-			fmt.Fprintln(out, line)
+	eol := []byte{'\n'}
+
+	// For speed we want each processed line to fit in a single buffer that
+	// we don't need to copy/extend. That means at least:
+	//   maxLineLen + 2 (for '\r\n' line end)
+	// However if maxLineLen is configured to something really small, then
+	// that could hurt perf, so set a min of 64k (bufio.Scanner's default)
+	const minBufSize = 65536
+	bufSize := maxLineLen + 2
+	if bufSize < minBufSize {
+		bufSize = minBufSize
+	}
+	reader := bufio.NewReaderSize(in, bufSize)
+
+	var wasPrefix bool
+	for {
+		// We use reader.ReadLine() to avoid consuming unbounded memory for
+		// a crazy-long line. If a line is longer than our read buffer, then
+		// we incrementally write it through unprocessed.
+		// `reader.ReadBytes('\n')` uses mem to the size of the input line.
+		//
+		// Note that due to this from `reader.ReadLine()`
+		//    > No indication or error is given if the input ends without
+		//    > a final line end.
+		// ecslog will always end its output with a newline, even if the input
+		// doesn't have one.
+		line, isPrefix, err := reader.ReadLine()
+		if err == io.EOF {
+			return nil
+		} else if err != nil {
+			// TODO: Add context to this err? What kind of err can we get here?
+			return err
+		}
+		if wasPrefix || isPrefix {
+			// This is a line > maxLineLen, so we just want to print it
+			// unchanged. The current line continues until `isPrefix == false`.
+			out.Write(line)
+			wasPrefix = isPrefix
+			if !isPrefix {
+				out.Write(eol)
+			}
 			continue
 		}
 
-		rec, err := r.parser.Parse(line)
+		// For now, do *not* support lines with leading whitespace. Happy to
+		// reconsider if there is a real use case.
+		if len(line) == 0 || line[0] != '{' {
+			out.Write(line)
+			out.Write(eol)
+			continue
+		}
+
+		rec, err := r.parser.ParseBytes(line)
 		if err != nil {
 			lg.Printf("line parse error: %s\n", err)
-			fmt.Fprintln(out, line)
+			out.Write(line)
+			out.Write(eol)
 			continue
 		}
 
 		if !r.isECSLoggingRecord(rec) {
-			fmt.Fprintln(out, line)
+			out.Write(line)
+			out.Write(eol)
 			continue
 		}
 		r.line = line
@@ -215,8 +260,8 @@ func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 		}
 
 		r.formatter.formatRecord(r, rec, &b)
-		fmt.Fprintln(out, b.String())
+		out.Write([]byte(b.String()))
+		out.Write(eol)
 		b.Reset()
 	}
-	return scanner.Err()
 }

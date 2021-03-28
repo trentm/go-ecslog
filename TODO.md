@@ -1,18 +1,15 @@
 # top
 
-- crash bug: Using this in apm-nodejs-http-client (using pino):
-        this._log.warn('uncork (from _corkTimer): state=%j', this._writableState)
-  generated a HUGE line that resulted in:
-    ecslog: error: bufio.Scanner: token too long
-  The log line had a huge "message" field... so need a guard on each field size.
-  https://stackoverflow.com/questions/21124327 suggests "bufio.Reader.ReadLine"
+- allow no message field
 - GH actions for tests, lint, vet
 - README needs a once-over
 - `-x, --elide-fields' or something to remote from rendering
   Matching to *include* only given fields? Is this only about "extra" fields?
 - get examples from the other ecs-loggers, esp. zap has some differences
-- config via github.com/BurntSushi/toml ?
+- config via github.com/BurntSushi/toml ? Is viper overkill?
 - clear out all panic()s and probably lo?g.Fatal()s? Perhaps remove from 'lg' pkg
+- releases so people don't need go installed to use. Best practice? GH action-based
+  automatic release on tag would be nice
 
 # mvp
 

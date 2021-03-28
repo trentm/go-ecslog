@@ -237,7 +237,7 @@ func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 type ecsFormatter struct{}
 
 func (f *ecsFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
-	b.WriteString(r.line)
+	b.WriteString(string(r.line))
 }
 
 // simpleFormatter formats log records as:

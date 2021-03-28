@@ -1,5 +1,14 @@
 # ecslog changelog
 
+## Unreleased
+
+- Refactor the read loop to handle very long lines without crashing, and without
+  using unbounded memory. One side-effect -- due to the usage of
+  `bufio.Reader.ReadLine` -- is that ecslog output will always finish with a
+  newline, even if the input did not.
+- Potentially much faster passing through unprocessed lines, moving to
+  `out.Write` instead of unnecessary usage of `fmt.Fprintln`.
+
 ## v0.1.0
 
 - Added KQL filtering via `ecslog -k,--kql KQL-FILTER`. For example:

@@ -1,7 +1,10 @@
+# non-ECS lines
 this line isn't in ECS format
 {"nor":"is this line"}
+["nor","is this line",3]
 {"this":"is invalid JSON
 
+# show off the level colors
 {"log.level":"trace","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}
 {"log.level":"debug","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}
 {"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}
@@ -9,10 +12,12 @@ this line isn't in ECS format
 {"log.level":"error","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}
 {"log.level":"fatal","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}
 
+# show fields that are in the default title line
 {"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"host":{"hostname":"pink.local"},"message":"add host.hostname"}
 {"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"process":{"pid":82240},"host":{"hostname":"pink.local"},"message":"add log.logger, process.pid","log.logger":"foo"}
 {"log.level":"info","@timestamp":"2021-01-19T22:51:12.143Z","ecs.version":"1.5.0","process":{"pid":82240},"host":{"hostname":"pink.local"},"log":{"logger":"bar"},"message":"log.logger 2nd form, ecs.foo","ecs":{"foo":"bar"}}
 
+# show some extra fields from ecs-logging libs, shows multiline rendering
 {"log.level":"info","@timestamp":"2021-02-11T06:24:50.564Z","ecs":{"version":"1.5.0"},"host":{"hostname":"purple.local"},"http":{"version":"1.1","request":{"method":"get","headers":{"host":"localhost:3000","accept":"*/*"}},"response":{"status_code":200,"headers":{"x-powered-by":"Express","foo":"Bar"}}},"url":{"full":"http://localhost:3000/","path":"/","domain":"localhost"},"user_agent":{"original":"curl/7.64.1"},"message":"http fields"}
 {"log.level":"warn","@timestamp":"2021-02-11T06:24:53.251Z","ecs":{"version":"1.5.0"},"host":{"hostname":"purple.local"},"error":{"type":"Error","message":"boom","stack_trace":"Error: boom\n    at /Users/trentm/el/ecs-logging-nodejs/loggers/pino/examples/express-simple.js:67:15\n    at Layer.handle [as handle_request] (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/layer.js:95:5)\n    at next (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/route.js:137:13)\n    at Route.dispatch (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/route.js:112:3)\n    at Layer.handle [as handle_request] (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/layer.js:95:5)\n    at /Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/index.js:281:22\n    at Function.process_params (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/index.js:335:12)\n    at next (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/index.js:275:10)\n    at /Users/trentm/el/ecs-logging-nodejs/loggers/pino/examples/express-simple.js:39:5\n    at Layer.handle [as handle_request] (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/layer.js:95:5)"},"message":"error fields"}
 
