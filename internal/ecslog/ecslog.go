@@ -150,8 +150,8 @@ func LogLevelLess(level1, level2 string) bool {
 }
 
 // isECSLoggingRecord returns true iff the given `rec` has the required
-// ecs-logging fields: @timestamp, message, ecs.version, and log.level (all
-// strings).
+// ecs-logging fields: @timestamp, ecs.version, and log.level (all
+// strings). If `message` is present, it must be a string.
 //
 // Side-effect: r.logLevel is cached on the Renderer for subsequent use.
 func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
@@ -160,8 +160,8 @@ func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
 		return false
 	}
 
-	message := rec.GetStringBytes("message")
-	if message == nil {
+	message := rec.Get("message")
+	if message != nil && message.Type() != fastjson.TypeString {
 		return false
 	}
 

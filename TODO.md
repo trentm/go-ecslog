@@ -1,6 +1,5 @@
 # top
 
-- allow no message field
 - GH actions for tests, lint, vet
 - README needs a once-over
 - `-x, --elide-fields' or something to remote from rendering

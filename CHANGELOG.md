@@ -2,10 +2,17 @@
 
 ## Unreleased
 
+- Support there not being a "message" field (allowed in ecs-logging spec
+  in https://github.com/elastic/ecs-logging/pull/55).
+
+- Fix a bug in the "simple" formatter, where the ellipsis would always be
+  printed because the "@timestamp" field was not discounted.
+
 - Refactor the read loop to handle very long lines without crashing, and without
   using unbounded memory. One side-effect -- due to the usage of
   `bufio.Reader.ReadLine` -- is that ecslog output will always finish with a
   newline, even if the input did not.
+
 - Potentially much faster passing through unprocessed lines, moving to
   `out.Write` instead of unnecessary usage of `fmt.Fprintln`.
 

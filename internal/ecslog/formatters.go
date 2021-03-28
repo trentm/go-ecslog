@@ -138,10 +138,13 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 		}
 		b.WriteByte(')')
 	}
-	b.WriteString(": ")
-	r.painter.Paint(b, "message")
-	b.Write(message)
-	r.painter.Reset(b)
+	b.WriteByte(':')
+	if message != nil {
+		b.WriteByte(' ')
+		r.painter.Paint(b, "message")
+		b.Write(message)
+		r.painter.Reset(b)
+	}
 }
 
 func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent string, painter *ansipainter.ANSIPainter, compact bool) {
@@ -249,15 +252,19 @@ type simpleFormatter struct{}
 func (f *simpleFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
 	jsonutils.ExtractValue(rec, "ecs", "version")
 	jsonutils.ExtractValue(rec, "log", "level")
+	jsonutils.ExtractValue(rec, "@timestamp")
 	message := jsonutils.ExtractValue(rec, "message").GetStringBytes()
 
 	r.painter.Paint(b, r.logLevel)
 	fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))
 	r.painter.Reset(b)
-	b.WriteString(": ")
-	r.painter.Paint(b, "message")
-	b.Write(message)
-	r.painter.Reset(b)
+	b.WriteByte(':')
+	if message != nil {
+		b.WriteByte(' ')
+		r.painter.Paint(b, "message")
+		b.Write(message)
+		r.painter.Reset(b)
+	}
 
 	// Ellipsis if there are more fields.
 	recObj := rec.GetObject()

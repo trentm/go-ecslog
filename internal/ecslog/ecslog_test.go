@@ -41,6 +41,12 @@ var renderFileTestCases = []renderFileTestCase{
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi","foo":"bar"}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n    foo: \"bar\"\n",
 	},
+	{
+		"no message is allowed",
+		"no", "", "default", "", "",
+		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"foo":"bar"}`,
+		"[2021-01-19T22:51:12.142Z]  INFO:\n    foo: \"bar\"\n",
+	},
 
 	// Coloring
 	{
