@@ -29,12 +29,18 @@ jobs:
     - name: vet
       run: go vet ./cmd/... ./internal/...
     - name: golint
-      run: golint ./cmd/... ./internal/...
+      run: |
+        # error out if there are lint results
+        results=$(golint ./cmd/... ./internal/...)
+        if [[ -n "$results" ]]; then
+          echo "$results"
+          exit 1
+        fi
     - name: fmt (goimports)
       run: |
-        # error out if there are format changes to make
+        # error out if there are format changes
         changes=$(find . -name "*.go" | xargs goimports -d)
-        if [[ -n "$$changes" ]]; then
+        if [[ -n "$changes" ]]; then
           echo "$changes"
           exit 1
         fi
