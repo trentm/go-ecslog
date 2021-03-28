@@ -14,7 +14,12 @@ test:
 check:
 	go vet ./cmd/... ./internal/...
 	golint ./cmd/... ./internal/...
-	find . -name "*.go" | xargs goimports -l
+	@echo "# check fmt with goimports..."
+	@changes=$$(find . -name "*.go" | xargs goimports -d) && \
+			if [[ -n "$$changes" ]]; then \
+					echo "$$changes"; \
+					exit 1; \
+			fi
 
 .PHONY: fmt
 fmt:
