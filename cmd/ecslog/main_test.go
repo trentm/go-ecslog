@@ -35,13 +35,6 @@ type mainTestCase struct {
 
 var mainTestCases = []mainTestCase{
 	{
-		"windows sanity check",
-		[]string{"dir"},
-		0,
-		regexp.MustCompile(`^XXX`),
-		nil,
-	},
-	{
 		"ecslog --version",
 		[]string{"ecslog", "--version"},
 		0,
