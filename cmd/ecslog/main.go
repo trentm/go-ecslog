@@ -14,11 +14,9 @@ import (
 
 // flags
 var flags = pflag.NewFlagSet("ecslog", pflag.ExitOnError)
-var flagHelp = flags.BoolP("help", "h", false, "print this help")
+var flagHelp = flags.BoolP("help", "h", false, "Print this help.")
 var flagVersion = flags.Bool("version", false, "Print version info and exit.")
-var flagSelfDebug = flags.Bool("self-debug", false, // hidden
-	`Write debug output from ecslog itself to stderr.
-E.g. 'ecslog ... --self-debug >/dev/null 2>>(ecslog)'`)
+var flagNoConfig = flags.Bool("no-config", false, "Ignore a ~/.ecslog.toml config file.")
 
 // Filtering options.
 var flagLevel = flags.StringP("level", "l", "",
@@ -82,7 +80,6 @@ func main() {
 	var f *os.File
 
 	flags.SortFlags = false
-	flags.MarkHidden("self-debug")   // For now, until/if have use case.
 	flags.MarkHidden("color-scheme") // Hidden until have meaningful other color schemes.
 	flags.Usage = printUsage
 	flags.Parse(os.Args[1:])
@@ -96,7 +93,22 @@ func main() {
 		os.Exit(0)
 	}
 
+	// Load config.
+	var cfg *config
+	if *flagNoConfig {
+		cfg = &config{}
+	} else {
+		err, cfg = loadConfig()
+		if err != nil {
+			printError(err.Error())
+			os.Exit(1)
+		}
+	}
+
 	shouldColorize := "auto"
+	if cfgColor, ok := cfg.GetString("color"); ok {
+		shouldColorize = cfgColor
+	}
 	if *flagColor && *flagNoColor {
 		printError("cannot specify both --color and --no-color")
 		printUsage()
@@ -107,7 +119,18 @@ func main() {
 		shouldColorize = "no"
 	}
 
-	r, err := ecslog.NewRenderer(shouldColorize, *flagColorScheme, *flagFormatName)
+	formatName := *flagFormatName
+	if cfgFormat, ok := cfg.GetString("format"); ok {
+		formatName = cfgFormat
+	}
+
+	maxLineLen := -1
+	if cfgMaxLineLen, ok := cfg.GetInt("maxLineLen"); ok {
+		maxLineLen = cfgMaxLineLen
+	}
+
+	r, err := ecslog.NewRenderer(shouldColorize, *flagColorScheme, formatName,
+		maxLineLen)
 	if err != nil {
 		printError(err.Error())
 		printUsage()

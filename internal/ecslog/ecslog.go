@@ -21,8 +21,7 @@ import (
 // Version is the semver version of this tool.
 const Version = "0.1.0"
 
-// TODO: make these configurable
-const maxLineLen = 16384
+const defaultMaxLineLen = 16384
 
 // Renderer is the class used to drive ECS log rendering (aka pretty printing).
 type Renderer struct {
@@ -30,6 +29,7 @@ type Renderer struct {
 	painter     *ansipainter.ANSIPainter
 	formatName  string
 	formatter   Formatter
+	maxLineLen  int
 	levelFilter string
 	kqlFilter   *kqlog.Filter
 	strict      bool
@@ -46,7 +46,10 @@ type Renderer struct {
 //   is a TTY), "yes", or "no"
 // - `colorScheme` is the name of one of the colors schemes in
 //   ansipainter.PainterFromName
-func NewRenderer(shouldColorize, colorScheme, formatName string) (*Renderer, error) {
+// - `maxLineLen` a maximum number of bytes for a line that will be considered
+//   for log record processing. It must be a positive number between 1 and
+//   1048576 (2^20), or -1 to use the default value (16384).
+func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int) (*Renderer, error) {
 	// Get appropriate "painter" for terminal coloring.
 	var painter *ansipainter.ANSIPainter
 	if shouldColorize == "auto" {
@@ -86,12 +89,20 @@ func NewRenderer(shouldColorize, colorScheme, formatName string) (*Renderer, err
 			formatName, strings.Join(known, ", "))
 	}
 
-	lg.Printf("create renderer: formatName=%q, shouldColorize=%q, colorScheme=%q\n",
-		formatName, shouldColorize, colorScheme)
+	if maxLineLen == -1 {
+		maxLineLen = defaultMaxLineLen
+	} else if maxLineLen <= 0 || maxLineLen > 1048576 {
+		return nil, fmt.Errorf("invalid maxLineLen, must be -1 or between 1 and 1048576: %d",
+			maxLineLen)
+	}
+
+	lg.Printf("create renderer: formatName=%q, shouldColorize=%q, colorScheme=%q, maxLineLen=%d\n",
+		formatName, shouldColorize, colorScheme, maxLineLen)
 	return &Renderer{
 		painter:    painter,
 		formatName: formatName,
 		formatter:  formatter,
+		maxLineLen: maxLineLen,
 	}, nil
 }
 
@@ -198,7 +209,7 @@ func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 	// However if maxLineLen is configured to something really small, then
 	// that could hurt perf, so set a min of 64k (bufio.Scanner's default)
 	const minBufSize = 65536
-	bufSize := maxLineLen + 2
+	bufSize := r.maxLineLen + 2
 	if bufSize < minBufSize {
 		bufSize = minBufSize
 	}
@@ -238,7 +249,7 @@ func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 
 		// For now, do *not* support lines with leading whitespace. Happy to
 		// reconsider if there is a real use case.
-		if len(line) == 0 || line[0] != '{' {
+		if len(line) == 0 || len(line) > r.maxLineLen || line[0] != '{' {
 			if !r.strict {
 				out.Write(line)
 				out.Write(eol)

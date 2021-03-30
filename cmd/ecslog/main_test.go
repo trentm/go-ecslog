@@ -57,7 +57,7 @@ var mainTestCases = []mainTestCase{
 	},
 	{
 		"ecslog --strict ...",
-		[]string{"ecslog", "--strict", "./testdata/strict.log"},
+		[]string{"ecslog", "--no-config", "--strict", "./testdata/strict.log"},
 		0,
 		regexp.MustCompile(`^\[2021-01-19T22:51:12.142Z\]  INFO: this is valid\n$`),
 		nil,
@@ -66,8 +66,9 @@ var mainTestCases = []mainTestCase{
 		// In earlier versions ecslog was using bufio.Scanner. A line >64k long
 		// would error out with 'bufio.Scanner: token too long'. Here we expect
 		// ecslog to handle this, and to properly render other lines.
+		// '--no-config' is needed to ensure we keep the default 16k maxLineLen.
 		"handle very long line",
-		[]string{"ecslog", "./testdata/crash-long-line.log"},
+		[]string{"ecslog", "--no-config", "./testdata/crash-long-line.log"},
 		0,
 		regexp.MustCompile(`^{"log\.level":"info",.*?,"message":".*?"}\n\[.*?\]  INFO: hi\n$`),
 		nil,

@@ -85,6 +85,32 @@ elide some fields, typically for compactness.
   TODO: not yet implemented.
 
 
+# Config file
+
+Some `ecslog` options can be set via a "~/.ecslog.toml" file. For example:
+
+```
+# Set the output format (equivalent of `-f, --format` option).
+# Valid values are: "default" (the default), "compact", "ecs", "simple"
+format="compact"
+
+# Whether output should be colorized.
+# Valid values are: "auto" (the default), "yes", "no".
+color="auto"
+
+# Set the maximum number of bytes long for a single line that will be
+# considered for processing. Longer lines will be treated as if they are
+# not ecs-logging records.
+# Valid values are: -1 (to use the default 16384), or a value between 1
+# and 1048576 (inclusive).
+maxLineLen=32768
+```
+
+See https://toml.io/ for TOML syntax information.
+The `--no-config` option can be used to ignore a possible "~/.ecslog.toml"
+config file.
+
+
 # Troubleshooting
 
 The `ECSLOG_DEBUG` environment variable can be set to get some internal
