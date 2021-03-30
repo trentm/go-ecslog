@@ -20,7 +20,7 @@
 - [x] colorized output
 - [x] `-l, --level` filtering support
 - [x] format/renderer support, minimal set of formats
-- [ ] basic config file support (TOML)
+- [x] basic config file support (TOML)
 - [x] don't choke on crazy long lines, i.e. input line handler needs to have maxlen
 - [ ] NOTICE.md (some BSD from go in lex.go, some MIT from fatih/color)
 - [ ] less-like pager?
