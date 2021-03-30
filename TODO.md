@@ -1,14 +1,15 @@
 # top
 
-- GH actions for tests, lint, vet
 - README needs a once-over
 - `-x, --elide-fields' or something to remote from rendering
   Matching to *include* only given fields? Is this only about "extra" fields?
 - get examples from the other ecs-loggers, esp. zap has some differences
-- config via github.com/BurntSushi/toml ? Is viper overkill?
-- clear out all panic()s and probably lo?g.Fatal()s? Perhaps remove from 'lg' pkg
+- title line re-eval, configurability, -t option
 - releases so people don't need go installed to use. Best practice? GH action-based
   automatic release on tag would be nice
+- check painter on black bg
+- review TODOs in the code
+- clear out all panic()s and probably lo?g.Fatal()s? Perhaps remove from 'lg' pkg
 
 # mvp
 
@@ -19,8 +20,7 @@
 - [x] colorized output
 - [x] `-l, --level` filtering support
 - [x] format/renderer support, minimal set of formats
-- [ ] basic config file support (TOML? JSON?) ... at least to select personally
-  preferred format. Or just envvars?
+- [ ] basic config file support (TOML)
 - [x] don't choke on crazy long lines, i.e. input line handler needs to have maxlen
 - [ ] NOTICE.md (some BSD from go in lex.go, some MIT from fatih/color)
 - [ ] less-like pager?
@@ -44,15 +44,11 @@
 - "http" output format
 - -x,--exclude-fields option to remove the given fields from the rendering
   of any line, or -i, --include-fields?
-- anything I should do for `go doc`?
 - coloring for added zap and other levels (test case for this)
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with
 - option to highlight a matching string? or leave that to the pager? Could
   pass it on to the pager. Could be a vi-like "+<num>" or "+/query".
-- handling myriad other logging levels: upper case, syslog-y level names,
-  spellings of 'warn/warning', etc. All these in a *sorted* order for level
-  filtering.
 - src fields: log.origin.file.\* (note that ecs-logging zap logger emits
   `"log.origin"."file.name"`, which adds a surprise)
     - also colorizing these
@@ -68,89 +64,4 @@
   I don't know if this is ECS-y at all. Guessing only sort of. Useful
   for fuzzing-ish?
 - benchmarking to be able to test out "TODO perf" ideas
-- canned stats output? num records, num non-ECS, breakdown of service.name,
-  http status report if http info, count of errors, breakdown of common errors
 - godoc and examples (https://blog.golang.org/examples)
-
-
-# KQL notes
-
-- exact search terms:
-
-        dotted.field.name:value1 value2 value3
-        dotted.field.name:"value with spaces"
-        e.g.:
-            http.response.status_code:400 401 404
-
-  Note that this works with multi-value fields.
-
-- Exact search terms on all "default fields in your index settings". Not
-  sure if we'd support this. Perhaps config to define the default fields.
-  Default to "message" and "service.name", for example? Or on the raw line?
-
-        value1 value2
-
-- boolean queries: `or`, `and`, `not`
-
-        response:200 or extension:php
-        response:200 and extension:php
-        response:(200 or 404)
-        response:200 and (extension:php or extension:css)
-        response:200 and extension:php or extension:css  # and binds like langs I'm used to
-        not response:200
-
-  To match multi-value fields that contain a list of terms:
-
-        tags:(success and info and security)
-
-- Range queries on numbers:
-
-        account_number >= 100 and items_sold <= 200
-
-- Date range queries. Dates will be hard. Start with only supporting
-  "@timestamp"?
-
-        @timestamp < "2021-01-02T21:55:59"
-        @timestamp < "2021-01"
-        @timestamp < "2021"
-
-  Might be nice to have separate options to mimic Kibana's time filter UI to
-  support easy to type ranges like "-1y" for the last year, etc.
-
-- "Exist" queries:
-
-        response:*
-
-- Wildcard queries of values:
-
-        machine.os:win*
-
-- Wildcard queries of multiple fields. This query checks machine.os and
-  machine.os.keyword for the term `windows 10`.
-
-        machine.os*:windows 10
-
-  Q: It isn't clear to me if this searches `machine.osasdf`.
-
-- Nested field queries
-  (<https://www.elastic.co/guide/en/kibana/current/kuery-query.html#_nested_field_queries>)
-  Skip supporting this for starters. There can't be a lot of *log* records
-  with arrays of objects, can there?
-
-## kuery code
-
-```typescript
-import {
-  esKuery,
-  IIndexPattern,
-  QuerySuggestion,
-} from '../../../../../../../src/plugins/data/public';
-
-function convertKueryToEsQuery(kuery: string, indexPattern: IIndexPattern) {
-  const ast = esKuery.fromKueryExpression(kuery);
-  return esKuery.toElasticsearchQuery(ast, indexPattern);
-}
-```
-
-src/plugins/data/common/es_query/kuery/ast/ast.test.ts
-~/el/kibana/src/plugins/data/common/es_query/kuery/ast/kuery.peg
