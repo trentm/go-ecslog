@@ -98,7 +98,7 @@ func main() {
 	if *flagNoConfig {
 		cfg = &config{}
 	} else {
-		err, cfg = loadConfig()
+		cfg, err = loadConfig()
 		if err != nil {
 			printError(err.Error())
 			os.Exit(1)

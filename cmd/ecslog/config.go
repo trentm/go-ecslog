@@ -84,21 +84,20 @@ func configFilePath() string {
 	return homeDir + string(os.PathSeparator) + ".ecslog.toml"
 }
 
-func loadConfig() (error, *config) {
+func loadConfig() (*config, error) {
 	cfgPath := configFilePath()
 	if cfgPath == "" {
-		return nil, &config{}
+		return &config{}, nil
 	}
 
 	tree, err := toml.LoadFile(cfgPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// No config file. No worries.
-			return nil, &config{}
-		} else {
-			return fmt.Errorf("error loading '%s': %s", cfgPath, err), nil
+			return &config{}, nil
 		}
+		return nil, fmt.Errorf("error loading '%s': %s", cfgPath, err)
 	}
 
-	return nil, &config{tree}
+	return &config{tree}, nil
 }
