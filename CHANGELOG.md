@@ -1,6 +1,6 @@
 # ecslog changelog
 
-## Unreleased
+## v0.2.0
 
 - Add `--strict` option that will suppress input lines that are not valid
   ecs-logging records. Normally non-ecs-logging records are passed through

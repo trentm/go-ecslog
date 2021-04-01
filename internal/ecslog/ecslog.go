@@ -19,7 +19,7 @@ import (
 )
 
 // Version is the semver version of this tool.
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 const defaultMaxLineLen = 16384
 
