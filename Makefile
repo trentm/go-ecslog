@@ -37,3 +37,59 @@ tidy:
 clean:
 	rm -f ecslog
 	rm -f cmd/ecslog/ecslog-for-test
+	rm -rf release-bits
+
+# Ensure CHANGELOG.md (top ver header) and ecslog.Version are the same.
+.PHONY: check-version
+check-version:
+	@ver=$(shell go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2) && \
+		changelogVer=$(shell egrep '^## v\d+\.\d+\.\d+' CHANGELOG.md | head -1 | cut -dv -f2) && \
+		[[ -n "$$ver" && "$$ver" == "$$changelogVer" ]] || \
+		(echo "check-version: error: ecslog.Version ($$ver) != CHANGELOG.md version ($$changelogVer)" && exit 1)
+
+# Build all the bits for a release, including extracting the top segment of the
+# CHANGELOG.md to a file. (Limitation: that latter does not support there only
+# being a single section in the file.)
+.PHONY: release-bits
+release-bits: ecslog
+	rm -rf release-bits
+	mkdir release-bits
+	GOOS=darwin && GOARCH=amd64 && \
+		GOOS=$$GOOS GOARCH=$$GOARCH go build -o release-bits/$$GOOS-$$GOARCH/ecslog ./cmd/ecslog
+	GOOS=darwin && GOARCH=arm64 && \
+		GOOS=$$GOOS GOARCH=$$GOARCH go build -o release-bits/$$GOOS-$$GOARCH/ecslog ./cmd/ecslog
+	GOOS=linux && GOARCH=amd64 && \
+		GOOS=$$GOOS GOARCH=$$GOARCH go build -o release-bits/$$GOOS-$$GOARCH/ecslog ./cmd/ecslog
+	GOOS=windows && GOARCH=amd64 && \
+		GOOS=$$GOOS GOARCH=$$GOARCH go build -o release-bits/$$GOOS-$$GOARCH/ecslog ./cmd/ecslog
+	echo "Extract section from CHANGELOG.md to release-bits/changelog.md" && \
+		start=$$(grep -n '^## v' CHANGELOG.md | head -1 | cut -d: -f1) && \
+		end=$$(grep -n '^## v' CHANGELOG.md | head -2 | tail -1 | cut -d: -f1) && \
+		sed -n "$$(( start + 1 )),$$(( end - 1 ))p" CHANGELOG.md > release-bits/changelog.md
+
+# Tag, build and release (to GitHub releases) a new release based on the
+# current ecslog.Version.
+.PHONY: cutarelease
+cutarelease: check-version release-bits
+	@which gh >/dev/null || (echo "cutarelease: error: missing 'gh'" && exit 1)
+	@ver=$$(go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2) && \
+		name=$$(grep ^module go.mod | cut -d' ' -f2) && \
+		releasedVerInfo=$$(gh release view v$$ver >/dev/null 2>/dev/null || true) && \
+		if [[ -n "$$releasedVerInfo" ]]; then \
+			echo "cutarelease: error: v$$ver is already released to GitHub"; \
+			exit 1; \
+		fi && \
+		echo "** Sure you want to tag and release $$name@$$ver to GitHub?" && \
+		echo "** Enter to continue, Ctrl+C to abort." && \
+		read
+	@ver=$$(go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2) && \
+		date=$(shell date -u "+%Y-%m-%d") && \
+		git tag -a "v$$ver" -m "version $$ver ($$date)" && \
+		git push origin "v$$ver" && \
+		gh release create "v$$ver" \
+			'release-bits/darwin-amd64/ecslog#ecslog (macOS/amd64)' \
+			'release-bits/darwin-arm64/ecslog#ecslog (macOS/arm64)' \
+			'release-bits/linux-amd64/ecslog#ecslog (Linux/amd64)' \
+			'release-bits/windows-amd64/ecslog#ecslog (Windows/amd64)' \
+			-t "v$$ver" -F release-bits/changelog.md
+

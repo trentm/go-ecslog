@@ -5,8 +5,6 @@
   Matching to *include* only given fields? Is this only about "extra" fields?
 - get examples from the other ecs-loggers, esp. zap has some differences
 - title line re-eval, configurability, -t option
-- releases so people don't need go installed to use. Best practice? GH action-based
-  automatic release on tag would be nice
 - check painter on black bg
 - review TODOs in the code
 - clear out all panic()s and probably lo?g.Fatal()s? Perhaps remove from 'lg' pkg

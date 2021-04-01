@@ -1,5 +1,6 @@
 /ecslog
 /cmd/ecslog/ecslog-for-test
 /cmd/ecslog/ecslog-for-test.exe
+/release-bits
 /tmp
 /.vscode
