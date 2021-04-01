@@ -71,6 +71,7 @@ release-bits: ecslog
 # current ecslog.Version.
 .PHONY: cutarelease
 cutarelease: check-version release-bits
+	[[ -z `git status --short` ]]  # If this fails, the working dir is dirty.
 	@which gh >/dev/null || (echo "cutarelease: error: missing 'gh'" && exit 1)
 	@ver=$$(go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2) && \
 		name=$$(grep ^module go.mod | cut -d' ' -f2) && \
