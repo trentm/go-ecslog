@@ -4,3 +4,4 @@
 /release-bits
 /tmp
 /.vscode
+.DS_Store

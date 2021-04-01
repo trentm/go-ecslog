@@ -54,15 +54,12 @@ check-version:
 release-bits: ecslog
 	rm -rf release-bits
 	mkdir release-bits
-	GOOS=darwin && GOARCH=amd64 && \
-		GOOS=$$GOOS GOARCH=$$GOARCH go build -o release-bits/$$GOOS-$$GOARCH/ecslog ./cmd/ecslog
-	GOOS=darwin && GOARCH=arm64 && \
-		GOOS=$$GOOS GOARCH=$$GOARCH go build -o release-bits/$$GOOS-$$GOARCH/ecslog ./cmd/ecslog
-	GOOS=linux && GOARCH=amd64 && \
-		GOOS=$$GOOS GOARCH=$$GOARCH go build -o release-bits/$$GOOS-$$GOARCH/ecslog ./cmd/ecslog
-	GOOS=windows && GOARCH=amd64 && \
-		GOOS=$$GOOS GOARCH=$$GOARCH go build -o release-bits/$$GOOS-$$GOARCH/ecslog ./cmd/ecslog
-	echo "Extract section from CHANGELOG.md to release-bits/changelog.md" && \
+	ver=$$(go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2) && \
+		GOOS=darwin  GOARCH=amd64 go build -o release-bits/ecslog-v$$ver-macos-amd64 ./cmd/ecslog && \
+		GOOS=darwin  GOARCH=arm64 go build -o release-bits/ecslog-v$$ver-macos-arm64 ./cmd/ecslog && \
+		GOOS=linux   GOARCH=amd64 go build -o release-bits/ecslog-v$$ver-linux-amd64 ./cmd/ecslog && \
+		GOOS=windows GOARCH=amd64 go build -o release-bits/ecslog-v$$ver-windows-amd64.exe ./cmd/ecslog
+	@echo "# Extract section from CHANGELOG.md to release-bits/changelog.md" && \
 		start=$$(grep -n '^## v' CHANGELOG.md | head -1 | cut -d: -f1) && \
 		end=$$(grep -n '^## v' CHANGELOG.md | head -2 | tail -1 | cut -d: -f1) && \
 		sed -n "$$(( start + 1 )),$$(( end - 1 ))p" CHANGELOG.md > release-bits/changelog.md
@@ -88,9 +85,5 @@ cutarelease: check-version release-bits
 		git tag -a "v$$ver" -m "version $$ver ($$date)" && \
 		git push origin "v$$ver" && \
 		gh release create "v$$ver" \
-			'release-bits/darwin-amd64/ecslog#ecslog (macOS/amd64)' \
-			'release-bits/darwin-arm64/ecslog#ecslog (macOS/arm64)' \
-			'release-bits/linux-amd64/ecslog#ecslog (Linux/amd64)' \
-			'release-bits/windows-amd64/ecslog#ecslog (Windows/amd64)' \
+			$(shell ls release-bits/ecslog-*) \
 			-t "v$$ver" -F release-bits/changelog.md
-
