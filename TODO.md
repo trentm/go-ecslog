@@ -39,6 +39,10 @@
 
 # later
 
+- Is there a way to do releases for macOS and not have users hit the
+  "Developer cannot be verified" error?
+  https://stackoverflow.com/questions/59890359/developer-cannot-be-verified-macos-error-exception-a-move-to-trash-b-cancel
+  Tarball? Zip? Installer? Verifying with mac somehow (ew)? Brew tap?
 - "http" output format
 - -x,--exclude-fields option to remove the given fields from the rendering
   of any line, or -i, --include-fields?
