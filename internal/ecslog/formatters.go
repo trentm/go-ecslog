@@ -109,12 +109,16 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 	//   typical bunyan:  [@timestamp] LEVEL (name/pid on host): message
 	//   typical pino:    [@timestamp] LEVEL (pid on host): message
 	//   typical winston: [@timestamp] LEVEL: message
-	b.WriteByte('[')
-	b.Write(timestamp)
-	b.WriteString("] ")
-	r.painter.Paint(b, r.logLevel)
-	fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))
-	r.painter.Reset(b)
+	if timestamp != nil {
+		b.WriteByte('[')
+		b.Write(timestamp)
+		b.WriteString("] ")
+	}
+	if r.logLevel != "" {
+		r.painter.Paint(b, r.logLevel)
+		fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))
+		r.painter.Reset(b)
+	}
 	if logLogger != nil || serviceName != nil || hostHostname != nil {
 		b.WriteString(" (")
 		alreadyWroteSome := false
@@ -138,9 +142,13 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 		}
 		b.WriteByte(')')
 	}
-	b.WriteByte(':')
+	if b.Len() > 0 {
+		b.WriteByte(':')
+	}
 	if message != nil {
-		b.WriteByte(' ')
+		if b.Len() > 0 {
+			b.WriteByte(' ')
+		}
 		r.painter.Paint(b, "message")
 		b.Write(message)
 		r.painter.Reset(b)
@@ -255,12 +263,18 @@ func (f *simpleFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *stri
 	jsonutils.ExtractValue(rec, "@timestamp")
 	message := jsonutils.ExtractValue(rec, "message").GetStringBytes()
 
-	r.painter.Paint(b, r.logLevel)
-	fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))
-	r.painter.Reset(b)
-	b.WriteByte(':')
+	if r.logLevel != "" {
+		r.painter.Paint(b, r.logLevel)
+		fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))
+		r.painter.Reset(b)
+	}
+	if b.Len() > 0 {
+		b.WriteByte(':')
+	}
 	if message != nil {
-		b.WriteByte(' ')
+		if b.Len() > 0 {
+			b.WriteByte(' ')
+		}
 		r.painter.Paint(b, "message")
 		b.Write(message)
 		r.painter.Reset(b)
@@ -269,7 +283,9 @@ func (f *simpleFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *stri
 	// Ellipsis if there are more fields.
 	recObj := rec.GetObject()
 	if recObj.Len() != 0 {
-		b.WriteByte(' ')
+		if b.Len() > 0 {
+			b.WriteByte(' ')
+		}
 		r.painter.Paint(b, "ellipsis")
 		b.WriteRune('…')
 		r.painter.Reset(b)

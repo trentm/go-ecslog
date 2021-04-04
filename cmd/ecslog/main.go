@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/spf13/pflag"
 
@@ -16,7 +17,7 @@ import (
 var flags = pflag.NewFlagSet("ecslog", pflag.ExitOnError)
 var flagHelp = flags.BoolP("help", "h", false, "Print this help.")
 var flagVersion = flags.Bool("version", false, "Print version info and exit.")
-var flagNoConfig = flags.Bool("no-config", false, "Ignore a ~/.ecslog.toml config file.")
+var flagNoConfig = flags.Bool("no-config", false, "Ignore a '~/.ecslog.toml' config file.")
 
 // Filtering options.
 var flagLevel = flags.StringP("level", "l", "",
@@ -32,15 +33,17 @@ var flagStrict = flags.Bool("strict", false,
 non-JSON and non-ecs-logging lines are passed through.`)
 
 // Formatting options.
-var flagFormatName = flags.StringP("format", "f", "default",
+var flagFormatName = flags.StringP("format", "f", "",
 	`Output format for rendered ECS log records.
-`)
+Valid formats are: 'default', 'compact', 'ecs', and 'simple'.`)
 var flagColor = flags.Bool("color", false,
 	`Colorize output. Without this option, coloring will be
 done if stdout is a TTY.`)
 var flagNoColor = flags.Bool("no-color", false, "Force no coloring of output.")
 var flagColorScheme = flags.StringP("color-scheme", "c", "default",
 	"Color scheme to use, if colorizing.") // hidden
+var flagExcludeFields = flags.StringP("exclude-fields", "x", "",
+	"Comma-separated list of fields to exclude from the output.")
 
 func printError(msg string) {
 	fmt.Fprintf(os.Stderr, "ecslog: error: %s\n", msg)
@@ -119,9 +122,13 @@ func main() {
 		shouldColorize = "no"
 	}
 
-	formatName := *flagFormatName
-	if cfgFormat, ok := cfg.GetString("format"); ok {
-		formatName = cfgFormat
+	formatName := "default"
+	if *flagFormatName != "" {
+		formatName = *flagFormatName
+	} else if len(formatName) == 0 {
+		if cfgFormat, ok := cfg.GetString("format"); ok {
+			formatName = cfgFormat
+		}
 	}
 
 	maxLineLen := -1
@@ -129,8 +136,16 @@ func main() {
 		maxLineLen = cfgMaxLineLen
 	}
 
-	r, err := ecslog.NewRenderer(shouldColorize, *flagColorScheme, formatName,
-		maxLineLen)
+	commaSplitter := regexp.MustCompile(`\s*,\s*`)
+	excludeFields := commaSplitter.Split(*flagExcludeFields, -1)
+
+	r, err := ecslog.NewRenderer(
+		shouldColorize,
+		*flagColorScheme,
+		formatName,
+		maxLineLen,
+		excludeFields,
+	)
 	if err != nil {
 		printError(err.Error())
 		printUsage()

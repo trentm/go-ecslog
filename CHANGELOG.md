@@ -1,5 +1,16 @@
 # ecslog changelog
 
+## Unreleased
+
+- Add `-x, --exclude-fields ...` option to exclude fields from the rendering.
+  For example, say you have log records that always has static "foo" and
+  "bar" fields. They add two lines to the output for every record, wasting
+  space.  `ecslog -x foo,bar` will remove them from the record before rendering
+  it, helping with info density.
+
+- Fix a bug where `-f FORMAT` would be ignored if there was a "format: FORMAT"
+  in "~/.ecslog.toml".
+
 ## v0.2.0
 
 - Add `--strict` option that will suppress input lines that are not valid

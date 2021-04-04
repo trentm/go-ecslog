@@ -25,14 +25,15 @@ const defaultMaxLineLen = 16384
 
 // Renderer is the class used to drive ECS log rendering (aka pretty printing).
 type Renderer struct {
-	parser      fastjson.Parser
-	painter     *ansipainter.ANSIPainter
-	formatName  string
-	formatter   Formatter
-	maxLineLen  int
-	levelFilter string
-	kqlFilter   *kqlog.Filter
-	strict      bool
+	parser        fastjson.Parser
+	painter       *ansipainter.ANSIPainter
+	formatName    string
+	formatter     Formatter
+	maxLineLen    int
+	excludeFields []string
+	levelFilter   string
+	kqlFilter     *kqlog.Filter
+	strict        bool
 
 	line     []byte // the raw input line
 	logLevel string // cached "log.level", read during isECSLoggingRecord
@@ -40,8 +41,6 @@ type Renderer struct {
 
 // NewRenderer returns a new ECS logging log renderer.
 //
-// - `logger` is an internal logger, unrelated to the log content begin
-//   processed
 // - `shouldColorize` is one of "auto" (meaning colorize if the output stream
 //   is a TTY), "yes", or "no"
 // - `colorScheme` is the name of one of the colors schemes in
@@ -49,7 +48,7 @@ type Renderer struct {
 // - `maxLineLen` a maximum number of bytes for a line that will be considered
 //   for log record processing. It must be a positive number between 1 and
 //   1048576 (2^20), or -1 to use the default value (16384).
-func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int) (*Renderer, error) {
+func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields []string) (*Renderer, error) {
 	// Get appropriate "painter" for terminal coloring.
 	var painter *ansipainter.ANSIPainter
 	if shouldColorize == "auto" {
@@ -99,10 +98,11 @@ func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int)
 	lg.Printf("create renderer: formatName=%q, shouldColorize=%q, colorScheme=%q, maxLineLen=%d\n",
 		formatName, shouldColorize, colorScheme, maxLineLen)
 	return &Renderer{
-		painter:    painter,
-		formatName: formatName,
-		formatter:  formatter,
-		maxLineLen: maxLineLen,
+		painter:       painter,
+		formatName:    formatName,
+		formatter:     formatter,
+		maxLineLen:    maxLineLen,
+		excludeFields: excludeFields,
 	}, nil
 }
 
@@ -283,6 +283,18 @@ func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 
 		if r.kqlFilter != nil && !r.kqlFilter.Match(rec) {
 			continue
+		}
+
+		for _, xf := range r.excludeFields {
+			if len(xf) == 0 {
+				continue
+			} else if xf == "log.level" {
+				// Special case: log.level is already removed and cached on
+				// the Renderer.
+				r.logLevel = ""
+			} else {
+				jsonutils.ExtractValue(rec, strings.Split(xf, ".")...)
+			}
 		}
 
 		r.formatter.formatRecord(r, rec, &b)

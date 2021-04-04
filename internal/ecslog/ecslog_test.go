@@ -86,7 +86,13 @@ var renderFileTestCases = []renderFileTestCase{
 func TestRenderFile(t *testing.T) {
 	for _, tc := range renderFileTestCases {
 		t.Run(tc.name, func(t *testing.T) {
-			r, err := ecslog.NewRenderer(tc.shouldColorize, tc.colorScheme, tc.formatName, -1)
+			r, err := ecslog.NewRenderer(
+				tc.shouldColorize,
+				tc.colorScheme,
+				tc.formatName,
+				-1,
+				[]string{},
+			)
 			if err != nil {
 				t.Errorf("ecslog.NewRenderer(%q, %q, %q) error: %s",
 					tc.shouldColorize, tc.colorScheme, tc.formatName, err)

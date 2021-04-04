@@ -73,6 +73,29 @@ var mainTestCases = []mainTestCase{
 		regexp.MustCompile(`^{"log\.level":"info",.*?,"message":".*?"}\n\[.*?\]  INFO: hi\n$`),
 		nil,
 	},
+
+	// Test rendering of -x,--exclude-fields option
+	{
+		"ecslog --exclude-fields foo,spam",
+		[]string{"ecslog", "-x", "foo,spam", "./testdata/exclude-fields.log"},
+		0,
+		regexp.MustCompile(`^\[2021-01-19T22:51:12.142Z\]  INFO: hi\n$`),
+		nil,
+	},
+	{
+		"ecslog --exclude-fields ...all the fields...",
+		[]string{"ecslog", "-x", "foo,spam,bogus, @timestamp,log.level, message", "./testdata/exclude-fields.log"},
+		0,
+		regexp.MustCompile(`^\n$`),
+		nil,
+	},
+	{
+		"ecslog --exclude-fields ...all the title fields...",
+		[]string{"ecslog", "-x", "@timestamp,log.level,message", "./testdata/exclude-fields.log"},
+		0,
+		regexp.MustCompile(`^\n    foo: "bar"\n    spam: "eggs"\n$`),
+		nil,
+	},
 }
 
 func TestMain(t *testing.T) {

@@ -1,8 +1,6 @@
 # top
 
 - README needs a once-over
-- `-x, --elide-fields' or something to remote from rendering
-  Matching to *include* only given fields? Is this only about "extra" fields?
 - get examples from the other ecs-loggers, esp. zap has some differences
 - title line re-eval, configurability, -t option
 - check painter on black bg
@@ -44,8 +42,6 @@
   https://stackoverflow.com/questions/59890359/developer-cannot-be-verified-macos-error-exception-a-move-to-trash-b-cancel
   Tarball? Zip? Installer? Verifying with mac somehow (ew)? Brew tap?
 - "http" output format
-- -x,--exclude-fields option to remove the given fields from the rendering
-  of any line, or -i, --include-fields?
 - coloring for added zap and other levels (test case for this)
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with
