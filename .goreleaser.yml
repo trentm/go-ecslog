@@ -50,5 +50,7 @@ brews:
     license: "Apache-2.0"
     # "auto" here means "do not push the formula change if this is a pre-release"
     skip_upload: auto
+    install: |
+      bin.install "ecslog"
     test: |
       system "#{bin}/ecslog --version"
