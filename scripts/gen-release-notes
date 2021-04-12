@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Generate release notes (in Markdown format) suitable for a release of the
+# given tag. This extracts the top-section of the CHANGELOG.md.
+#
+# Usage:
+#   ./scripts/gen-release-notes TAG
+#
+
+if [ "$TRACE" != "" ]; then
+    export PS4='${BASH_SOURCE}:${LINENO}: ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
+    set -o xtrace
+fi
+set -o errexit
+set -o pipefail
+
+# ---- support functions
+
+function fatal {
+    echo "$(basename $0): error: $*"
+    exit 1
+}
+
+# ---- mainline
+
+tag="$1"
+[[ -n "$tag" ]] || fatal "missing TAG argument"
+
+slug=$(echo "$tag" | sed -e 's/\.//g')
+echo "# [Changelog](CHANGELOG.md#$slug)"
+
+start=$(egrep -n "^## $tag" CHANGELOG.md | head -1 | cut -d: -f1)
+# Limitation: this requires there to be an earlier release section.
+end=$(egrep -n '^## v' CHANGELOG.md | head -2 | tail -1 | cut -d: -f1)
+sed -n "$(( start + 1 )),$(( end - 1 ))p" CHANGELOG.md
+
+echo "# Commits"
+echo

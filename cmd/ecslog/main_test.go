@@ -38,7 +38,7 @@ var mainTestCases = []mainTestCase{
 		"ecslog --version",
 		[]string{"ecslog", "--version"},
 		0,
-		regexp.MustCompile(`^ecslog \d+\.\d+\.\d+\nhttps://`),
+		regexp.MustCompile(`^ecslog v\d+\.\d+\.\d+\nhttps://`),
 		nil,
 	},
 	{

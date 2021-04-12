@@ -1,11 +1,26 @@
 # top
 
+- release with goreleaser:
+    - changelog extraction: HERE
+      - scripts/gen-release-notes
+      - then `goreleaser release --release-notes=./tmp/release-notes.md`
+          --release-footer string   Load custom release notes footer from a markdown file
+          --release-header string   Load custom release notes header from a markdown file
+          --release-notes string    Load custom release notes from a markdown file
+    - brew support: https://goreleaser.com/customization/homebrew/
+    - add dist/ to 'make clean'
+    - learn about verifiable builds: https://goreleaser.com/customization/gomod/
+    - incorporate goreleaser's "-X main.commit" ldflag into version info
+      https://goreleaser.com/customization/build/
+    - reproducible builds (there were notes on this in the goreleaser docs)
+      `cat dist/checksums.txt` should match between two builds of the same
 - README needs a once-over
 - get examples from the other ecs-loggers, esp. zap has some differences
 - title line re-eval, configurability, -t option
-- check painter on black bg
 - review TODOs in the code
 - clear out all panic()s and probably lo?g.Fatal()s? Perhaps remove from 'lg' pkg
+- releases: because unsigned dev thing on Mac, it would be nice to get into
+  brew. Look at goreleaser again
 
 # mvp
 
@@ -22,9 +37,9 @@
 - [ ] less-like pager?
 - [ ] basic intro docs in README
 - [ ] tests
-  - be resilient with type-errors and dotted-name collisions in other fields
+  - [x] be resilient with type-errors and dotted-name collisions in other fields
     (i.e. don't want to spend time for full schema validation)
-  - examples from all the ecs-logging libs
+  - [ ] examples from all the ecs-logging libs
 - [x] more robust dotted lookup
 - [ ] bug reporting facility on crash? Not sure we can with golang. Could just
   be a `--bug` CLI and github issue template with commands to gather and
@@ -41,7 +56,7 @@
   "Developer cannot be verified" error?
   https://stackoverflow.com/questions/59890359/developer-cannot-be-verified-macos-error-exception-a-move-to-trash-b-cancel
   Tarball? Zip? Installer? Verifying with mac somehow (ew)? Brew tap?
-- "http" output format
+- "http" output format -> fieldRenderers?
 - coloring for added zap and other levels (test case for this)
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with

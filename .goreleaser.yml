@@ -1,0 +1,54 @@
+# This project uses https://goreleaser.com to handle its releases.
+#
+# Dry-run:
+#   rm -rf dist && goreleaser release --snapshot --skip-publish
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - id: ecslog
+    main: ./cmd/ecslog
+    binary: ecslog
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # These mod_timestamp and ldflags are specified for reproducible builds,
+    # i.e. no changing temporal info in the built binaries.
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    ldflags:
+      - "-s -w -X main.commit={{.Commit}}"
+archives:
+  - format_overrides:
+      - goos: windows
+        format: zip
+    name_template: "{{ .Binary }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    replacements:
+      darwin: macos
+      386: i386
+      amd64: x86_64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+brews:
+  - name: ecslog
+    tap:
+      owner: trentm
+      name: homebrew-tap
+    commit_author:
+      name: goreleaser
+      email: trentm+goreleaser@gmail.com
+    folder: Formula
+    homepage: https://github.com/trentm/go-ecslog
+    description: "Pretty rendering of ecs-logging logs"
+    license: "Apache-2.0"
+    # "auto" here means "do not push the formula change if this is a pre-release"
+    skip_upload: auto
+    test: |
+      system "#{bin}/ecslog --version"
