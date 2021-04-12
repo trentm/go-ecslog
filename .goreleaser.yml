@@ -36,3 +36,19 @@ checksum:
   name_template: 'checksums.txt'
 snapshot:
   name_template: "{{ .Tag }}-next"
+brews:
+  - name: ecslog
+    tap:
+      owner: trentm
+      name: homebrew-tap
+    commit_author:
+      name: goreleaser
+      email: trentm+goreleaser@gmail.com
+    folder: Formula
+    homepage: https://github.com/trentm/go-ecslog
+    description: "Pretty rendering of ecs-logging logs"
+    license: "Apache-2.0"
+    # "auto" here means "do not push the formula change if this is a pre-release"
+    skip_upload: auto
+    test: |
+      system "#{bin}/ecslog --version"
