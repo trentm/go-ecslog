@@ -2,6 +2,10 @@
 
 ## v0.3.0
 
+- Use goreleaser for releases. The "Version" generally includes the leading "v"
+  now. Built binaries should be reproducible from a given commit. They should
+  be smaller now ("-s -w" in ldflags).
+
 - Add `-x, --exclude-fields ...` option to exclude fields from the rendering.
   For example, say you have log records that always has static "foo" and
   "bar" fields. They add two lines to the output for every record, wasting

@@ -37,46 +37,34 @@ tidy:
 clean:
 	rm -f ecslog
 	rm -f cmd/ecslog/ecslog-for-test
-	rm -rf release-bits
 	rm -rf dist
 
 # Ensure the top CHANGELOG.md h2 section and ecslog.Version are the same.
 .PHONY: check-version
 check-version:
 	@ver="$(shell go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2)" && \
-		changelogVer="$(shell egrep '^## ' CHANGELOG.md | head -1 | cut -dv -f2)" && \
+		changelogVer="$(shell egrep '^## ' CHANGELOG.md | head -1 | cut -d' ' -f2)" && \
 		[[ -n "$$ver" && "$$ver" == "$$changelogVer" ]] || \
 		(echo "check-version: error: ecslog.Version ($$ver) != CHANGELOG.md version ($$changelogVer)" && exit 1)
 
-# Build all the bits for a release, including extracting the top segment of the
-# CHANGELOG.md to a file. (Limitation: that latter does not support there only
-# being a single section in the file.)
-.PHONY: release-bits
-release-bits: ecslog
-	rm -rf release-bits
-	mkdir release-bits
-	ver=$$(go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2) && \
-		GOOS=darwin  GOARCH=amd64 go build -o release-bits/ecslog-v$$ver-macos-amd64 ./cmd/ecslog && \
-		GOOS=darwin  GOARCH=arm64 go build -o release-bits/ecslog-v$$ver-macos-arm64 ./cmd/ecslog && \
-		GOOS=linux   GOARCH=amd64 go build -o release-bits/ecslog-v$$ver-linux-amd64 ./cmd/ecslog && \
-		GOOS=windows GOARCH=amd64 go build -o release-bits/ecslog-v$$ver-windows-amd64.exe ./cmd/ecslog
-	@echo "# Extract section from CHANGELOG.md to release-bits/changelog.md" && \
-		start=$$(grep -n '^## v' CHANGELOG.md | head -1 | cut -d: -f1) && \
-		end=$$(grep -n '^## v' CHANGELOG.md | head -2 | tail -1 | cut -d: -f1) && \
-		sed -n "$$(( start + 1 )),$$(( end - 1 ))p" CHANGELOG.md > release-bits/changelog.md
-
-
 # Tag and release a new release based on the current ecslog.Version.
+# This long bit of Makefile does the following:
+# - ensure the repo isn't dirty (changed files)
+# - warn if we have a tag for this release already
+# - interactively confirm
+# - git tag
+# - generate release notes (from CHANGELOG.md mostly)
+# - call goreleaser to release
 .PHONY: cutarelease
-cutarelease: check-version
-	#[[ -z `git status --short` ]]  # If this fails, the working dir is dirty.
+cutarelease: tidy check check-version
+	[[ -z `git status --short` ]]  # If this fails, the working dir is dirty.
 	@which goreleaser >/dev/null || (echo "cutarelease: error: missing 'goreleaser'" && exit 1)
 	@ver=$$(go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2) && \
 		name=$$(grep ^module go.mod | cut -d' ' -f2) && \
-		haveTag=$$(git tag -l "v$$ver") && \
+		haveTag=$$(git tag -l "$$ver") && \
 		if [[ -n "$$haveTag" ]]; then \
 			echo ""; \
-			echo "** Warning: v$$ver tag already exists! Continue anyway?"; \
+			echo "** Warning: $$ver tag already exists! Continue anyway?"; \
 			echo "** Enter to continue, Ctrl+C to abort."; \
 			read; \
 		fi && \
@@ -86,33 +74,10 @@ cutarelease: check-version
 		read && \
 		if [[ -z "$$haveTag" ]]; then \
 			date=$(shell date -u "+%Y-%m-%d"); \
-			echo git tag -a "v$$ver" -m "version $$ver ($$date)"; \
+			echo "Creating tag $$ver"; \
+			git tag -a "$$ver" -m "$$ver ($$date)"; \
 		fi && \
-		echo git push origin "v$$ver" && \
-		echo XXX generate release notes && \
-		goreleaser release --skip-publish --snapshot --rm-dist
+		git push origin "$$ver" && \
+		mkdir -p ./tmp && ./scripts/gen-release-notes "$$ver" > ./tmp/release-notes.md && \
+		GORELEASER_PREVIOUS_TAG="$$ver" goreleaser release --skip-publish --snapshot --rm-dist --release-header=./tmp/release-notes.md
 
-
-# Tag, build and release (to GitHub releases) a new release based on the
-# current ecslog.Version.
-.PHONY: cutarelease-old
-cutarelease-old: check-version release-bits
-	[[ -z `git status --short` ]]  # If this fails, the working dir is dirty.
-	@which gh >/dev/null || (echo "cutarelease: error: missing 'gh'" && exit 1)
-	@ver=$$(go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2) && \
-		name=$$(grep ^module go.mod | cut -d' ' -f2) && \
-		releasedVerInfo=$$(gh release view v$$ver >/dev/null 2>/dev/null || true) && \
-		if [[ -n "$$releasedVerInfo" ]]; then \
-			echo "cutarelease: error: v$$ver is already released to GitHub"; \
-			exit 1; \
-		fi && \
-		echo "** Sure you want to tag and release $$name@$$ver to GitHub?" && \
-		echo "** Enter to continue, Ctrl+C to abort." && \
-		read
-	@ver=$$(go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2) && \
-		date=$(shell date -u "+%Y-%m-%d") && \
-		git tag -a "v$$ver" -m "version $$ver ($$date)" && \
-		git push origin "v$$ver" && \
-		gh release create "v$$ver" \
-			$(shell ls release-bits/ecslog-*) \
-			-t "v$$ver" -F release-bits/changelog.md

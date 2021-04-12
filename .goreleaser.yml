@@ -18,7 +18,11 @@ builds:
     goarch:
       - amd64
       - arm64
+    # These mod_timestamp and ldflags are specified for reproducible builds,
+    # i.e. no changing temporal info in the built binaries.
     mod_timestamp: '{{ .CommitTimestamp }}'
+    ldflags:
+      - "-s -w -X main.commit={{.Commit}}"
 archives:
   - format_overrides:
       - goos: windows
@@ -32,5 +36,3 @@ checksum:
   name_template: 'checksums.txt'
 snapshot:
   name_template: "{{ .Tag }}-next"
-release:
-  draft: true #XXX for testing

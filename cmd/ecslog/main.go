@@ -13,6 +13,9 @@ import (
 	"github.com/trentm/go-ecslog/internal/ecslog"
 )
 
+// .goreleaser.yml ldflags
+var commit = ""
+
 // flags
 var flags = pflag.NewFlagSet("ecslog", pflag.ExitOnError)
 var flagHelp = flags.BoolP("help", "h", false, "Print this help.")
@@ -52,6 +55,9 @@ func printError(msg string) {
 func printVersion() {
 	fmt.Printf("ecslog %s\n", ecslog.Version)
 	fmt.Printf("https://github.com/trentm/go-ecslog\n")
+	if commit != "" {
+		fmt.Printf("commit %s\n", commit)
+	}
 }
 
 const usageHead = `usage:
