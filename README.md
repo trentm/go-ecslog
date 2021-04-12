@@ -1,13 +1,25 @@
 # ecslog
 
-Playing with a CLI for pretty formatting of ecs-logging format logs, a la
-`bunyan` and `pino-pretty`.
+A CLI for pretty-printing (and filtering) of [ecs-logging](https://www.elastic.co/guide/en/ecs-logging/overview/master/intro.html)
+formatted log files.
 
-Current status: still alpha.
 
-```sh
-go run cmd/ecslog/main.go ./demo.log
-```
+# Install
+
+For homebrew users:
+
+    brew install trentm/tap/ecslog
+
+Or download a pre-built binary package from [the releases page](https://github.com/trentm/go-ecslog/releases)
+and copy to somewhere on your PATH.
+
+Or you can build from source via:
+
+    git clone git@github.com:trentm/go-ecslog.git
+    cd go-ecslog
+    make
+    ./ecslog --version
+
 
 # Goals
 
