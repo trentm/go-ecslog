@@ -79,5 +79,5 @@ cutarelease: tidy check check-version
 		fi && \
 		git push origin "$$ver" && \
 		mkdir -p ./tmp && ./scripts/gen-release-notes "$$ver" > ./tmp/release-notes.md && \
-		GORELEASER_PREVIOUS_TAG="$$ver" goreleaser release --skip-publish --snapshot --rm-dist --release-header=./tmp/release-notes.md
+		GORELEASER_PREVIOUS_TAG="$$ver" goreleaser release --rm-dist --release-header=./tmp/release-notes.md
 
