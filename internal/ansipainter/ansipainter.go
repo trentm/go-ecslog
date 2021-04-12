@@ -164,7 +164,7 @@ var PinoPrettyPainter = New(map[string][]Attribute{
 })
 
 // DefaultPainter implements the stock default color scheme for `ecslog`.
-// TODO: test on black bg, windows
+// TODO: test on windows
 // TODO: could add styles for punctuation (jq bolds them, I'd tend to make them faint)
 var DefaultPainter = New(map[string][]Attribute{
 	"message":       {FgCyan},
