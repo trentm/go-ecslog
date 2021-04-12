@@ -38,12 +38,13 @@ clean:
 	rm -f ecslog
 	rm -f cmd/ecslog/ecslog-for-test
 	rm -rf release-bits
+	rm -rf dist
 
-# Ensure CHANGELOG.md (top ver header) and ecslog.Version are the same.
+# Ensure the top CHANGELOG.md h2 section and ecslog.Version are the same.
 .PHONY: check-version
 check-version:
-	@ver=$(shell go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2) && \
-		changelogVer=$(shell egrep '^## v\d+\.\d+\.\d+' CHANGELOG.md | head -1 | cut -dv -f2) && \
+	@ver="$(shell go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2)" && \
+		changelogVer="$(shell egrep '^## ' CHANGELOG.md | head -1 | cut -dv -f2)" && \
 		[[ -n "$$ver" && "$$ver" == "$$changelogVer" ]] || \
 		(echo "check-version: error: ecslog.Version ($$ver) != CHANGELOG.md version ($$changelogVer)" && exit 1)
 
@@ -64,10 +65,38 @@ release-bits: ecslog
 		end=$$(grep -n '^## v' CHANGELOG.md | head -2 | tail -1 | cut -d: -f1) && \
 		sed -n "$$(( start + 1 )),$$(( end - 1 ))p" CHANGELOG.md > release-bits/changelog.md
 
+
+# Tag and release a new release based on the current ecslog.Version.
+.PHONY: cutarelease
+cutarelease: check-version
+	#[[ -z `git status --short` ]]  # If this fails, the working dir is dirty.
+	@which goreleaser >/dev/null || (echo "cutarelease: error: missing 'goreleaser'" && exit 1)
+	@ver=$$(go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2) && \
+		name=$$(grep ^module go.mod | cut -d' ' -f2) && \
+		haveTag=$$(git tag -l "v$$ver") && \
+		if [[ -n "$$haveTag" ]]; then \
+			echo ""; \
+			echo "** Warning: v$$ver tag already exists! Continue anyway?"; \
+			echo "** Enter to continue, Ctrl+C to abort."; \
+			read; \
+		fi && \
+		echo "" && \
+		echo "** Confirm you want to tag and release $$name@$$ver" && \
+		echo "** Enter to continue, Ctrl+C to abort." && \
+		read && \
+		if [[ -z "$$haveTag" ]]; then \
+			date=$(shell date -u "+%Y-%m-%d"); \
+			echo git tag -a "v$$ver" -m "version $$ver ($$date)"; \
+		fi && \
+		echo git push origin "v$$ver" && \
+		echo XXX generate release notes && \
+		goreleaser release --skip-publish --snapshot --rm-dist
+
+
 # Tag, build and release (to GitHub releases) a new release based on the
 # current ecslog.Version.
-.PHONY: cutarelease
-cutarelease: check-version release-bits
+.PHONY: cutarelease-old
+cutarelease-old: check-version release-bits
 	[[ -z `git status --short` ]]  # If this fails, the working dir is dirty.
 	@which gh >/dev/null || (echo "cutarelease: error: missing 'gh'" && exit 1)
 	@ver=$$(go run ./cmd/ecslog --version | head -1 | cut -d' ' -f2) && \

@@ -1,6 +1,6 @@
 # ecslog changelog
 
-## Unreleased
+## v0.3.0
 
 - Add `-x, --exclude-fields ...` option to exclude fields from the rendering.
   For example, say you have log records that always has static "foo" and
