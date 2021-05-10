@@ -43,6 +43,16 @@
   "Developer cannot be verified" error?
   https://stackoverflow.com/questions/59890359/developer-cannot-be-verified-macos-error-exception-a-move-to-trash-b-cancel
   Tarball? Zip? Installer? Verifying with mac somehow (ew)? Brew tap?
+- Clickable file+linenum. If the ECS log record includes file name and line
+  fields (https://www.elastic.co/guide/en/ecs/current/ecs-log.html#field-log-origin-file-line)
+  the it would be nice if the default rendering of that (perhaps in the title line?)
+  made it feasible to have that a clickable link in terminals.
+    - With iTerm2 one could use "Semantic History" (e.g. see
+      https://coderwall.com/p/5hp1yg/iterm2-cmd-click-to-open-file-in-vim-in-terminal)
+      to configure this to open in a local editor or perhaps a GH link to that
+      line number. What about ecslog (or another project) providing a small
+      command to do that mapping (of log.origin.file.{name,line}) to local
+      paths and/or GH links? Then provide docs on setting that up.
 - "http" output format -> fieldRenderers?
 - coloring for added zap and other levels (test case for this)
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
