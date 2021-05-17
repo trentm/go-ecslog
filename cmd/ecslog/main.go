@@ -5,6 +5,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/trentm/go-ecslog/internal/ghlink"
+	"io"
 	"os"
 	"regexp"
 
@@ -43,10 +45,12 @@ var flagColor = flags.Bool("color", false,
 	`Colorize output. Without this option, coloring will be
 done if stdout is a TTY.`)
 var flagNoColor = flags.Bool("no-color", false, "Force no coloring of output.")
-var flagColorScheme = flags.StringP("color-scheme", "c", "default",
+var flagColorScheme = flags.StringP("color-scheme", "c", "",
 	"Color scheme to use, if colorizing.") // hidden
 var flagExcludeFields = flags.StringP("exclude-fields", "x", "",
 	"Comma-separated list of fields to exclude from the output.")
+var flagIncludeFields = flags.StringP("include-fields", "i", "",
+	"Comma-separated list of fields to include in the output. Opposite of exclude-fields.")
 
 func printError(msg string) {
 	fmt.Fprintf(os.Stderr, "ecslog: error: %s\n", msg)
@@ -128,6 +132,10 @@ func main() {
 		shouldColorize = "no"
 	}
 
+	if (*flagFormatName == "experimental" || *flagFormatName == "apm") && *flagColorScheme == "" {
+		flagColorScheme = flagFormatName
+	}
+
 	formatName := "default"
 	if *flagFormatName != "" {
 		formatName = *flagFormatName
@@ -135,6 +143,9 @@ func main() {
 		if cfgFormat, ok := cfg.GetString("format"); ok {
 			formatName = cfgFormat
 		}
+	}
+	if *flagColorScheme == "" {
+		flagColorScheme = &formatName
 	}
 
 	maxLineLen := -1
@@ -144,6 +155,7 @@ func main() {
 
 	commaSplitter := regexp.MustCompile(`\s*,\s*`)
 	excludeFields := commaSplitter.Split(*flagExcludeFields, -1)
+	includeFields := commaSplitter.Split(*flagIncludeFields, -1)
 
 	r, err := ecslog.NewRenderer(
 		shouldColorize,
@@ -151,12 +163,26 @@ func main() {
 		formatName,
 		maxLineLen,
 		excludeFields,
+		includeFields,
 	)
 	if err != nil {
 		printError(err.Error())
 		printUsage()
 		os.Exit(1)
 	}
+
+	remoteName, ok := cfg.GetString("remote_name")
+	if !ok {
+		remoteName = "elastic"
+	}
+
+	// assume that logs are piped from a process running from a directory that is a Git repo
+	// because that is a very wild assumption, if there is an error we just ignore it and move on
+	resolver, err := ghlink.NewResolver(remoteName, ".")
+	if err == nil {
+		r.LinkResolver = resolver
+	}
+
 	// TODO: warn (err?) if flagLevel is an unknown level (per levelValFromName)
 	r.SetLevelFilter(*flagLevel)
 	err = r.SetKQLFilter(*flagKQL)
@@ -167,31 +193,30 @@ func main() {
 	}
 	r.SetStrictFilter(*flagStrict)
 
+	var inputs = make(map[string]io.Reader)
 	if len(flags.Args()) == 0 {
-		f = os.Stdin
-		err = r.RenderFile(f, os.Stdout)
-		if err != nil {
-			errs = append(errs, err)
-		}
+		inputs["stdin"] = os.Stdin
 	} else {
 		for _, logPath := range flags.Args() {
 			f, err = os.Open(logPath)
 			if err != nil {
 				errs = append(errs, err)
-				continue
+			} else {
+				inputs[f.Name()] = f
 			}
-			err = r.RenderFile(f, os.Stdout)
-			if err != nil {
-				errs = append(errs, err)
-			}
-			f.Close()
+			defer f.Close()
 		}
 	}
 
-	if len(errs) > 0 {
-		for _, err = range errs {
-			printError(err.Error())
+	if len(errs) == 0 {
+		err = r.RenderFile(inputs, os.Stdout)
+		if err != nil {
+			errs = append(errs, err)
 		}
+	}
+
+	for _, err = range errs {
+		printError(err.Error())
 		os.Exit(1)
 	}
 }

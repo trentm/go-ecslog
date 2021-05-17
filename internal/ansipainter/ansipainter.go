@@ -184,9 +184,50 @@ var DefaultPainter = New(map[string][]Attribute{
 	"fatal":         {BgRed},
 })
 
+var ExperimentalPainter = New(map[string][]Attribute{
+	"timestamp":  {Faint},
+	"selector":   {Bold},
+	"src":        {Italic},
+	"src_link":   {Italic, Underline},
+	"trace":      {Faint},
+	"debug":      {Faint},
+	"info":       {FgCyan},
+	"warn":       {FgYellow},
+	"warning":    {FgYellow},
+	"error":      {FgRed},
+	"fatal":      {FgRed},
+	"filename":   {FgMagenta},
+	"jsonString": {FgGreen},
+	"jsonNumber": {FgBlue},
+	"jsonTrue":   {FgBlue},
+	"jsonFalse":  {FgBlue},
+	"jsonNull":   {FgBlue},
+})
+
+var APMPainter = New(map[string][]Attribute{
+	"apm_beat":    {FgMagenta},
+	"apm_service": {Bold},
+	"apm_meta":    {Italic},
+	"apm_event":   {Bold},
+	"timestamp":   {Faint},
+	"trace":       {Faint},
+	"debug":       {Faint},
+	"info":        {FgCyan},
+	"warn":        {FgYellow},
+	"error":       {FgRed},
+	"fatal":       {FgRed},
+	"jsonString":  {FgGreen},
+	"jsonNumber":  {FgBlue},
+	"jsonTrue":    {FgBlue},
+	"jsonFalse":   {FgBlue},
+	"jsonNull":    {FgBlue},
+})
+
 // PainterFromName maps known painter name to an ANSIPainter.
 var PainterFromName = map[string]*ANSIPainter{
-	"bunyan":      BunyanPainter,
-	"pino-pretty": PinoPrettyPainter,
-	"default":     DefaultPainter,
+	"bunyan":       BunyanPainter,
+	"pino-pretty":  PinoPrettyPainter,
+	"default":      DefaultPainter,
+	"experimental": ExperimentalPainter,
+	"apm":          APMPainter,
 }

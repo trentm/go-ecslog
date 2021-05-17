@@ -3,12 +3,11 @@ package ecslog
 import (
 	"bytes"
 	"fmt"
-	"strings"
-
 	"github.com/trentm/go-ecslog/internal/ansipainter"
 	"github.com/trentm/go-ecslog/internal/jsonutils"
 	"github.com/trentm/go-ecslog/internal/lg"
 	"github.com/valyala/fastjson"
+	"strings"
 )
 
 // Formatter is the interface for formatting a log record.
@@ -85,6 +84,8 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 	if val = jsonutils.ExtractValueOfType(rec, fastjson.TypeString, "log", "logger"); val != nil {
 		logLogger = val.GetStringBytes()
 	}
+
+	// apm formatter
 	var serviceName []byte
 	if val = jsonutils.ExtractValueOfType(rec, fastjson.TypeString, "service", "name"); val != nil {
 		serviceName = val.GetStringBytes()
@@ -292,9 +293,202 @@ func (f *simpleFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *stri
 	}
 }
 
+type experimentalFormatter struct{}
+
+func (f *experimentalFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
+	jsonutils.ExtractValue(rec, "ecs", "version")
+	jsonutils.ExtractValue(rec, "log", "level")
+
+	// TODO dedup this, timestamp has been looked up several times
+	timestamp := string(jsonutils.ExtractValue(rec, "@timestamp").GetStringBytes())
+	if timestamp == "" {
+		timestamp = string(jsonutils.ExtractValue(rec, "timestamp").GetStringBytes())
+	}
+	message := jsonutils.ExtractValue(rec, "message").GetStringBytes()
+	fileName := string(jsonutils.ExtractValue(rec, "log", "origin", "file", "name").GetStringBytes())
+	fileLine := jsonutils.ExtractValue(rec, "log", "origin", "file", "line").GetInt64()
+	selector := jsonutils.ExtractValue(rec, "log", "logger").GetStringBytes()
+
+	r.painter.Paint(b, "timestamp")
+	if r.timestamp != nil {
+		timestamp = r.timestamp.Format("06-01-02 15:04:05")
+	}
+	b.WriteString(timestamp)
+	b.WriteByte(' ')
+	r.painter.Reset(b)
+
+	if selector != nil {
+		b.WriteByte('[')
+		r.painter.Paint(b, "selector")
+		b.Write(selector)
+		r.painter.Reset(b)
+		b.WriteString("] ")
+	}
+
+	if fileName != "" {
+		b.WriteByte('(')
+		// not really working well for high volume logs, see internal/ghlink/resolver.go
+		src, ok := r.LinkResolver.Resolve(fileName, fileLine, message)
+		if ok {
+			r.painter.Paint(b, "src_link")
+		} else {
+			r.painter.Paint(b, "src")
+		}
+		b.WriteString(src)
+		r.painter.Reset(b)
+		b.WriteByte(')')
+	}
+
+	if message != nil {
+		b.WriteByte(' ')
+		r.painter.Paint(b, strings.ToLower(r.logLevel))
+		b.Write(message)
+		r.painter.Reset(b)
+	}
+
+	// approx copy-paste from compact
+	obj := rec.GetObject()
+	obj.Visit(func(k []byte, v *fastjson.Value) {
+		// this should be implemented (and reused) in formatRecord
+		if r.includeFields[0] != "" && !strings.Contains(strings.Join(r.includeFields, " "), string(k)) {
+			return
+		}
+		b.WriteString("\n    ")
+		r.painter.Paint(b, "extraField")
+		b.Write(k)
+		r.painter.Reset(b)
+		b.WriteString(": ")
+		// Using v.String() here to estimate width is poor because:
+		// 1. It doesn't include spacing that ultimately is used, so is off by
+		//    some number of chars.
+		// 2. I'm guessing this involves more allocs that could be done by
+		//    maintaining a width count and doing a walk through equivalent to
+		//	  `formatJSONValue`.
+		vStr := v.String()
+		// 80 (quotable width) - 8 (indentation) - length of `k` - len(": ")
+		if len(vStr) < 80-8-len(k)-2 {
+			formatJSONValue(b, v, "    ", "    ", r.painter, true)
+		} else {
+			formatJSONValue(b, v, "    ", "    ", r.painter, false)
+		}
+	})
+}
+
+type apmFormatter struct{}
+
+func (f *apmFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
+
+	// TODO dedup this, timestamp has been looked up several times
+	timestamp := string(jsonutils.ExtractValue(rec, "@timestamp").GetStringBytes())
+
+	beatType := jsonutils.ExtractValue(rec, "observer", "type").GetStringBytes()
+	beatVersion := jsonutils.ExtractValue(rec, "observer", "version").GetStringBytes()
+	hostname := jsonutils.ExtractValue(rec, "host", "hostname").GetStringBytes()
+	arch := jsonutils.ExtractValue(rec, "host", "architecture").GetStringBytes()
+	platform := jsonutils.ExtractValue(rec, "host", "os", "platform").GetStringBytes()
+	serviceName := jsonutils.LookupValue(rec, "service", "name").GetStringBytes()
+	serviceEnv := jsonutils.ExtractValue(rec, "service", "environment").GetStringBytes()
+	agentName := jsonutils.ExtractValue(rec, "agent", "name").GetStringBytes()
+	agentVersion := jsonutils.ExtractValue(rec, "agent", "version").GetStringBytes()
+	event := jsonutils.ExtractValue(rec, "processor", "event").GetStringBytes()
+
+	jsonutils.ExtractValue(rec, "beat")
+	jsonutils.ExtractValue(rec, "@metadata")
+	jsonutils.ExtractValue(rec, "observer")
+	jsonutils.ExtractValue(rec, "host")
+	jsonutils.ExtractValue(rec, "service")
+	jsonutils.ExtractValue(rec, "ecs")
+
+	if beatType != nil && beatVersion != nil {
+		r.painter.Paint(b, "apm_beat")
+		b.Write(beatType)
+		b.WriteByte(' ')
+		b.Write(beatVersion)
+		b.WriteByte(' ')
+		r.painter.Reset(b)
+	}
+
+	if r.timestamp != nil {
+		timestamp = r.timestamp.Format("06-01-02 15:04:05")
+	}
+	b.WriteString(timestamp)
+	b.WriteByte(' ')
+	r.painter.Reset(b)
+
+	if serviceName != nil {
+		r.painter.Paint(b, "apm_service")
+		b.Write(serviceName)
+		if serviceEnv != nil {
+			b.WriteByte('(')
+			b.Write(serviceEnv)
+			b.WriteByte(')')
+		}
+		b.WriteByte(' ')
+		r.painter.Reset(b)
+	}
+
+	r.painter.Paint(b, "apm_meta")
+	if agentName != nil {
+		b.Write(agentName)
+		if agentVersion != nil {
+			b.Write(agentVersion)
+			b.WriteByte(' ')
+		}
+	}
+	if hostname != nil {
+		b.WriteString(" (")
+		b.Write(hostname)
+		if arch != nil {
+			b.WriteByte(' ')
+			b.Write(arch)
+			if platform != nil {
+				b.WriteByte('/')
+				b.Write(platform)
+			}
+		}
+		b.WriteString(") ")
+	}
+	r.painter.Reset(b)
+
+	if event != nil {
+		r.painter.Paint(b, "apm_event")
+		b.Write(event)
+		r.painter.Reset(b)
+	}
+
+	// approx copy-paste from compact
+	obj := rec.GetObject()
+	obj.Visit(func(k []byte, v *fastjson.Value) {
+		// this should be implemented (and reused) in formatRecord
+		if r.includeFields[0] != "" && !strings.Contains(strings.Join(r.includeFields, " "), string(k)) {
+			return
+		}
+		b.WriteString("\n    ")
+		r.painter.Paint(b, "extraField")
+		b.Write(k)
+		r.painter.Reset(b)
+		b.WriteString(": ")
+		// Using v.String() here to estimate width is poor because:
+		// 1. It doesn't include spacing that ultimately is used, so is off by
+		//    some number of chars.
+		// 2. I'm guessing this involves more allocs that could be done by
+		//    maintaining a width count and doing a walk through equivalent to
+		//	  `formatJSONValue`.
+		vStr := v.String()
+		// 80 (quotable width) - 8 (indentation) - length of `k` - len(": ")
+		if len(vStr) < 80-8-len(k)-2 {
+			formatJSONValue(b, v, "    ", "    ", r.painter, true)
+		} else {
+			formatJSONValue(b, v, "    ", "    ", r.painter, false)
+		}
+	})
+}
+
 var formatterFromName = map[string]Formatter{
-	"default": &defaultFormatter{},
-	"ecs":     &ecsFormatter{},
-	"simple":  &simpleFormatter{},
-	"compact": &compactFormatter{},
+	"default":      &defaultFormatter{},
+	"ecs":          &ecsFormatter{},
+	"simple":       &simpleFormatter{},
+	"compact":      &compactFormatter{},
+	"experimental": &experimentalFormatter{},
+	"apm":          &apmFormatter{},
 }

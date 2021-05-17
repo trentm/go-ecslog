@@ -70,7 +70,7 @@ func (c *config) GetString(key string) (val string, ok bool) {
 	return
 }
 
-func configFilePath() string {
+func globalConfigFilePath() string {
 	var homeEnvVar string
 	if runtime.GOOS == "windows" {
 		homeEnvVar = "UserProfile"
@@ -85,12 +85,12 @@ func configFilePath() string {
 }
 
 func loadConfig() (*config, error) {
-	cfgPath := configFilePath()
+	cfgPath := globalConfigFilePath()
 	if cfgPath == "" {
 		return &config{}, nil
 	}
 
-	tree, err := toml.LoadFile(cfgPath)
+	globalTree, err := toml.LoadFile(cfgPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// No config file. No worries.
@@ -99,5 +99,29 @@ func loadConfig() (*config, error) {
 		return nil, fmt.Errorf("error loading '%s': %s", cfgPath, err)
 	}
 
+	localTree, err := toml.LoadFile(".")
+	if err != nil || localTree == nil {
+		return &config{globalTree}, nil
+	}
+	merged := merge(localTree.ToMap(), globalTree.ToMap())
+	tree, err := toml.TreeFromMap(merged)
+	if err != nil {
+		return nil, err
+	}
 	return &config{tree}, nil
+}
+
+func merge(base, overrides map[string]interface{}) map[string]interface{} {
+	for key, override := range overrides {
+		if value, ok := base[key]; ok {
+			nestedBase, baseKeyIsMap := value.(map[string]interface{})
+			nestedOverrides, overrideIsMap := override.(map[string]interface{})
+			if baseKeyIsMap && overrideIsMap {
+				base[key] = merge(nestedBase, nestedOverrides)
+			}
+		} else {
+			base[key] = override
+		}
+	}
+	return base
 }

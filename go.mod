@@ -8,4 +8,5 @@ require (
 	github.com/pelletier/go-toml v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/valyala/fastjson v1.6.3
+	gopkg.in/src-d/go-git.v4 v4.13.1
 )

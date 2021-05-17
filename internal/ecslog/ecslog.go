@@ -3,19 +3,19 @@ package ecslog
 // Shared stuff for `ecslog` that isn't specific to the CLI.
 
 import (
-	"bufio"
 	"fmt"
-	"io"
-	"os"
-	"sort"
-	"strings"
-
 	"github.com/mattn/go-isatty"
 	"github.com/trentm/go-ecslog/internal/ansipainter"
+	"github.com/trentm/go-ecslog/internal/ghlink"
 	"github.com/trentm/go-ecslog/internal/jsonutils"
 	"github.com/trentm/go-ecslog/internal/kqlog"
 	"github.com/trentm/go-ecslog/internal/lg"
 	"github.com/valyala/fastjson"
+	"io"
+	"os"
+	"sort"
+	"strings"
+	"time"
 )
 
 // Version is the semver version of this tool.
@@ -31,12 +31,16 @@ type Renderer struct {
 	formatter     Formatter
 	maxLineLen    int
 	excludeFields []string
+	includeFields []string
 	levelFilter   string
 	kqlFilter     *kqlog.Filter
 	strict        bool
 
 	line     []byte // the raw input line
 	logLevel string // cached "log.level", read during isECSLoggingRecord
+
+	LinkResolver *ghlink.Resolver
+	timestamp    *time.Time
 }
 
 // NewRenderer returns a new ECS logging log renderer.
@@ -48,7 +52,7 @@ type Renderer struct {
 // - `maxLineLen` a maximum number of bytes for a line that will be considered
 //   for log record processing. It must be a positive number between 1 and
 //   1048576 (2^20), or -1 to use the default value (16384).
-func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields []string) (*Renderer, error) {
+func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields, includeFields []string) (*Renderer, error) {
 	// Get appropriate "painter" for terminal coloring.
 	var painter *ansipainter.ANSIPainter
 	if shouldColorize == "auto" {
@@ -103,6 +107,7 @@ func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int,
 		formatter:     formatter,
 		maxLineLen:    maxLineLen,
 		excludeFields: excludeFields,
+		includeFields: includeFields,
 	}, nil
 }
 
@@ -173,115 +178,85 @@ func LogLevelLess(level1, level2 string) bool {
 //
 // Side-effect: r.logLevel is cached on the Renderer for subsequent use.
 func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
+
+	// changes in this function are to support any Elastic logs, and not just ECS
 	timestamp := rec.GetStringBytes("@timestamp")
+	if timestamp == nil {
+		// Elasticsearch and Kibana logs
+		timestamp = rec.GetStringBytes("timestamp")
+	}
 	if timestamp == nil {
 		return false
 	}
 
-	message := rec.Get("message")
-	if message != nil && message.Type() != fastjson.TypeString {
-		return false
+	times := string(timestamp)
+	var parsed time.Time
+	var err error
+	// not all projects use the same layout, ECS does not define it - try/err most common ones
+	// apm-server
+	parsed, err = time.Parse("2006-01-02T15:04:05.999999999-0700", times)
+	if err != nil {
+		// Kibana
+		parsed, err = time.Parse("2006-01-02T15:04:05-07:00", times)
+		if err != nil {
+			// I don't understand Elasticsearch timestamps and can't make go to understand them neither, so just cut them out
+			parsed, err = time.Parse("2006-01-02T15:04:05", strings.Split(times, ",")[0])
+		}
 	}
-
-	ecsVersion := jsonutils.LookupValue(rec, "ecs", "version")
-	if ecsVersion == nil || ecsVersion.Type() != fastjson.TypeString {
-		return false
+	if err == nil {
+		// needs flag, and some error surfacing mechanism?
+		local, err := time.LoadLocation("Local")
+		if err == nil {
+			parsed = parsed.In(local)
+		}
+		r.timestamp = &parsed
 	}
 
 	logLevel := jsonutils.LookupValue(rec, "log", "level")
 	if logLevel == nil || logLevel.Type() != fastjson.TypeString {
-		return false
+		// Elasticsearch and Kibana logs
+		logLevel = jsonutils.ExtractValue(rec, "level")
 	}
-	r.logLevel = string(logLevel.GetStringBytes())
+	if logLevel != nil && logLevel.Type() == fastjson.TypeString {
+		r.logLevel = string(logLevel.GetStringBytes())
+	}
 
 	return true
 }
 
-// RenderFile renders log records from the given open file stream to the given
+// RenderFile renders log Records from the given open file streams to the given
 // output stream (typically os.Stdout).
-func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
+func (r *Renderer) RenderFile(ins map[string]io.Reader, out io.Writer) error {
 	var b strings.Builder
 	eol := []byte{'\n'}
 
-	// For speed we want each processed line to fit in a single buffer that
-	// we don't need to copy/extend. That means at least:
-	//   maxLineLen + 2 (for '\r\n' line end)
-	// However if maxLineLen is configured to something really small, then
-	// that could hurt perf, so set a min of 64k (bufio.Scanner's default)
-	const minBufSize = 65536
-	bufSize := r.maxLineLen + 2
-	if bufSize < minBufSize {
-		bufSize = minBufSize
-	}
-	reader := bufio.NewReaderSize(in, bufSize)
+	reader := NewParallelReader(ins, r.maxLineLen, r.parser)
 
-	var wasPrefix bool
+	//var wasPrefix bool
 	for {
-		// We use reader.ReadLine() to avoid consuming unbounded memory for
-		// a crazy-long line. If a line is longer than our read buffer, then
-		// we incrementally write it through unprocessed.
-		// `reader.ReadBytes('\n')` uses mem to the size of the input line.
-		//
-		// Note that due to this from `reader.ReadLine()`
-		//    > No indication or error is given if the input ends without
-		//    > a final line end.
-		// ecslog will always end its output with a newline, even if the input
-		// doesn't have one.
-		line, isPrefix, err := reader.ReadLine()
-		if err == io.EOF {
-			return nil
-		} else if err != nil {
-			// TODO: Add context to this err? What kind of err can we get here?
-			return err
+		// get the next log entry cronologically
+		rec := reader.ReadNextRecord()
+		if rec == nil {
+			break
 		}
-		if wasPrefix || isPrefix {
-			// This is a line > maxLineLen, so we just want to print it
-			// unchanged. The current line continues until `isPrefix == false`.
-			wasPrefix = isPrefix
-			if !r.strict {
-				out.Write(line)
-				if !isPrefix {
-					out.Write(eol)
-				}
-			}
-			continue
-		}
+		data := rec.Data
 
-		// For now, do *not* support lines with leading whitespace. Happy to
-		// reconsider if there is a real use case.
-		if len(line) == 0 || len(line) > r.maxLineLen || line[0] != '{' {
+		if !r.isECSLoggingRecord(data) {
 			if !r.strict {
-				out.Write(line)
+				// TODO handle this
+				//out.Write(line)
 				out.Write(eol)
 			}
 			continue
 		}
-
-		rec, err := r.parser.ParseBytes(line)
-		if err != nil {
-			lg.Printf("line parse error: %s\n", err)
-			if !r.strict {
-				out.Write(line)
-				out.Write(eol)
-			}
-			continue
-		}
-
-		if !r.isECSLoggingRecord(rec) {
-			if !r.strict {
-				out.Write(line)
-				out.Write(eol)
-			}
-			continue
-		}
-		r.line = line
+		//r.line = line
 
 		// `--level info` will drop any log records less than log.level=info.
 		if r.levelFilter != "" && LogLevelLess(r.logLevel, r.levelFilter) {
 			continue
 		}
 
-		if r.kqlFilter != nil && !r.kqlFilter.Match(rec) {
+		if r.kqlFilter != nil && !r.kqlFilter.Match(data) {
 			continue
 		}
 
@@ -293,13 +268,21 @@ func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 				// the Renderer.
 				r.logLevel = ""
 			} else {
-				jsonutils.ExtractValue(rec, strings.Split(xf, ".")...)
+				jsonutils.ExtractValue(data, strings.Split(xf, ".")...)
 			}
 		}
 
-		r.formatter.formatRecord(r, rec, &b)
+		if len(ins) > 1 {
+			// if there are multiple inputs, prepend the source (file name) to each line
+			r.painter.Paint(&b, "filename")
+			b.WriteString(rec.Source)
+			b.WriteString(": ")
+			r.painter.Reset(&b)
+		}
+		r.formatter.formatRecord(r, data, &b)
 		out.Write([]byte(b.String()))
 		out.Write(eol)
 		b.Reset()
 	}
+	return nil
 }
