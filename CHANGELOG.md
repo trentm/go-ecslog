@@ -1,5 +1,17 @@
 # ecslog changelog
 
+## Unreleased
+
+- Add `ecsLenient: false` config option to allow rendering of lines that are
+  likely ECS-compatible, but do not have all three required ecs-logging fields:
+  `@timestamp`, `ecs.version`, `log.level`. Only one of those three is required
+  to be rendered.
+
+  This intentially doesn't have a command-line option for now.  Currently it is
+  considered a crutch for ES 8.x and Kibana 8.x logs that, at time of writing,
+  are missing one or two of the above fields. If that is long-standing,
+  `ecsLenient: true` might eventually become the default.
+
 ## v0.3.0
 
 - Use goreleaser for releases. The "Version" generally includes the leading "v"

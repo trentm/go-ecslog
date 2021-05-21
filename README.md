@@ -99,28 +99,63 @@ elide some fields, typically for compactness.
 
 # Config file
 
-Some `ecslog` options can be set via a "~/.ecslog.toml" file. For example:
+Any of the following `ecslog` options can be set in a "~/.ecslog.toml" file.
+See https://toml.io/ for TOML syntax information.  The `--no-config` option can
+be used to ignore "~/.ecslog.toml", if there is one.
+
+For example:
 
 ```
-# Set the output format (equivalent of `-f, --format` option).
-# Valid values are: "default" (the default), "compact", "ecs", "simple"
 format="compact"
+maxLineLen=32768
+ecsLenient=true
+```
 
-# Whether output should be colorized.
-# Valid values are: "auto" (the default), "yes", "no".
+### config: format
+
+Set the output format name (a string, equivalent of `-f, --format` option).
+Valid values are: "default" (the default), "compact", "ecs", "simple"
+
+```
+format="compact"
+```
+
+### config: color
+
+A color mode string for whether output should be colorized.  Valid values are:
+"auto" (the default), "yes", "no". "auto" will colorize if the output stream
+is a TTY.
+
+```
 color="auto"
+```
 
-# Set the maximum number of bytes long for a single line that will be
-# considered for processing. Longer lines will be treated as if they are
-# not ecs-logging records.
-# Valid values are: -1 (to use the default 16384), or a value between 1
-# and 1048576 (inclusive).
+### config: maxLineLen
+
+Set the maximum number of bytes long for a single line that will be considered
+for processing. Longer lines will be treated as if they are not ecs-logging
+records.  Valid values are: -1 (to use the default 16384), or a value between 1
+and 1048576 (inclusive).
+
+```
 maxLineLen=32768
 ```
 
-See https://toml.io/ for TOML syntax information.
-The `--no-config` option can be used to ignore a possible "~/.ecslog.toml"
-config file.
+### config: ecsLenient
+
+Some JSON logs are "ECS compatible" in that they attempt to follow [ECS general
+guidelines](https://www.elastic.co/guide/en/ecs/current/ecs-guidelines.html) --
+have a `@timestamp`, use the specified data types for ECS fields, set
+`ecs.version` -- but are not "ecs-logging compliant" because they are missing
+one or more of `@timestamp`, `ecs.version`, or `log.level`.
+
+By default `ecslog` will skip rendering for any log line that does not have
+those three fields. Set `ecsLenient` to true to tell `ecslog` to attempt to
+rendering any log record that has **at least one** of these fields.
+
+```
+ecsLenient=true
+```
 
 
 # Troubleshooting

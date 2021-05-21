@@ -13,6 +13,7 @@ type renderFileTestCase struct {
 	shouldColorize string
 	colorScheme    string
 	formatName     string
+	ecsLenient     bool
 	levelFilter    string
 	kqlFilter      string
 	input          string
@@ -23,7 +24,7 @@ var renderFileTestCases = []renderFileTestCase{
 	// Non-ecs-logging lines
 	{
 		"empty object",
-		"no", "", "default", "", "",
+		"no", "", "default", false, "", "",
 		"{}",
 		"{}\n",
 	},
@@ -31,19 +32,19 @@ var renderFileTestCases = []renderFileTestCase{
 	// Basics
 	{
 		"basic",
-		"no", "", "default", "", "",
+		"no", "", "default", false, "", "",
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n",
 	},
 	{
 		"basic, extra var",
-		"no", "", "default", "", "",
+		"no", "", "default", false, "", "",
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi","foo":"bar"}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n    foo: \"bar\"\n",
 	},
 	{
 		"no message is allowed",
-		"no", "", "default", "", "",
+		"no", "", "default", false, "", "",
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"foo":"bar"}`,
 		"[2021-01-19T22:51:12.142Z]  INFO:\n    foo: \"bar\"\n",
 	},
@@ -51,7 +52,7 @@ var renderFileTestCases = []renderFileTestCase{
 	// Coloring
 	{
 		"coloring 1",
-		"yes", "default", "default", "", "",
+		"yes", "default", "default", false, "", "",
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
 		"[2021-01-19T22:51:12.142Z] \x1b[32m INFO\x1b[0m: \x1b[36mhi\x1b[0m\n",
 	},
@@ -59,27 +60,53 @@ var renderFileTestCases = []renderFileTestCase{
 	// KQL filtering
 	{
 		"kql filtering, yep",
-		"no", "", "default", "", "foo:bar",
+		"no", "", "default", false, "", "foo:bar",
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi","foo":"bar"}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n    foo: \"bar\"\n",
 	},
 	{
 		"kql filtering, nope",
-		"no", "", "default", "", "foo:baz",
+		"no", "", "default", false, "", "foo:baz",
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi","foo":"bar"}`,
 		"",
 	},
 	{
 		"kql filtering, log.level range query, yep",
-		"no", "", "default", "", "log.level > debug",
+		"no", "", "default", false, "", "log.level > debug",
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n",
 	},
 	{
 		"kql filtering, log.level range query, nope",
-		"no", "", "default", "", "log.level > warn",
+		"no", "", "default", false, "", "log.level > warn",
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
 		"",
+	},
+
+	// ecsLenient
+	{
+		"lenient: missing log.level",
+		"no", "", "default", true, "", "",
+		`{"@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
+		"[2021-01-19T22:51:12.142Z] : hi\n",
+	},
+	{
+		"lenient: missing @timestamp",
+		"no", "", "default", true, "", "",
+		`{"log.level":"info","ecs":{"version":"1.5.0"},"message":"hi"}`,
+		" INFO: hi\n",
+	},
+	{
+		"lenient: missing ecs.version",
+		"no", "", "default", true, "", "",
+		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","message":"hi"}`,
+		"[2021-01-19T22:51:12.142Z]  INFO: hi\n",
+	},
+	{
+		"lenient: @timestamp only",
+		"no", "", "default", true, "", "",
+		`{"@timestamp":"2021-01-19T22:51:12.142Z","message":"hi"}`,
+		"[2021-01-19T22:51:12.142Z] : hi\n",
 	},
 }
 
@@ -92,6 +119,7 @@ func TestRenderFile(t *testing.T) {
 				tc.formatName,
 				-1,
 				[]string{},
+				tc.ecsLenient,
 			)
 			if err != nil {
 				t.Errorf("ecslog.NewRenderer(%q, %q, %q) error: %s",

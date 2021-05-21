@@ -31,6 +31,7 @@ type Renderer struct {
 	formatter     Formatter
 	maxLineLen    int
 	excludeFields []string
+	ecsLenient    bool
 	levelFilter   string
 	kqlFilter     *kqlog.Filter
 	strict        bool
@@ -48,7 +49,12 @@ type Renderer struct {
 // - `maxLineLen` a maximum number of bytes for a line that will be considered
 //   for log record processing. It must be a positive number between 1 and
 //   1048576 (2^20), or -1 to use the default value (16384).
-func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields []string) (*Renderer, error) {
+// - `ecsLenient` is a bool indicating if rendering should be lenient in
+//   validating if a JSON line is an ecs-logging record. Strictly (the default)
+//   to be an ecs-logging record it must have ecs.version, log.level, and
+//   @timestamp. If this option is true, it will only require *one* of those
+//   fields to exist.
+func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields []string, ecsLenient bool) (*Renderer, error) {
 	// Get appropriate "painter" for terminal coloring.
 	var painter *ansipainter.ANSIPainter
 	if shouldColorize == "auto" {
@@ -103,6 +109,7 @@ func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int,
 		formatter:     formatter,
 		maxLineLen:    maxLineLen,
 		excludeFields: excludeFields,
+		ecsLenient:    ecsLenient,
 	}, nil
 }
 
@@ -171,29 +178,48 @@ func LogLevelLess(level1, level2 string) bool {
 // ecs-logging fields: @timestamp, ecs.version, and log.level (all
 // strings). If `message` is present, it must be a string.
 //
+// Caveat: If `r.ecsLenient` then only one of the three "required" fields is
+// needed to be considered an "ecs-logging" record.
+//
 // Side-effect: r.logLevel is cached on the Renderer for subsequent use.
 func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
+	logLevel := jsonutils.LookupValue(rec, "log", "level")
+	if logLevel != nil && logLevel.Type() == fastjson.TypeString {
+		r.logLevel = string(logLevel.GetStringBytes())
+		if r.ecsLenient {
+			return true
+		}
+	} else if !r.ecsLenient {
+		return false
+	}
+
 	timestamp := rec.GetStringBytes("@timestamp")
-	if timestamp == nil {
+	if timestamp != nil {
+		if r.ecsLenient {
+			return true
+		}
+	} else if !r.ecsLenient {
+		return false
+	}
+
+	ecsVersion := jsonutils.LookupValue(rec, "ecs", "version")
+	if ecsVersion != nil && ecsVersion.Type() == fastjson.TypeString {
+		if r.ecsLenient {
+			return true
+		}
+	} else if !r.ecsLenient {
 		return false
 	}
 
 	message := rec.Get("message")
 	if message != nil && message.Type() != fastjson.TypeString {
+		// If there is a "message" it must be a string.
 		return false
 	}
 
-	ecsVersion := jsonutils.LookupValue(rec, "ecs", "version")
-	if ecsVersion == nil || ecsVersion.Type() != fastjson.TypeString {
+	if r.ecsLenient {
 		return false
 	}
-
-	logLevel := jsonutils.LookupValue(rec, "log", "level")
-	if logLevel == nil || logLevel.Type() != fastjson.TypeString {
-		return false
-	}
-	r.logLevel = string(logLevel.GetStringBytes())
-
 	return true
 }
 

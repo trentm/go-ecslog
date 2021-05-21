@@ -145,12 +145,18 @@ func main() {
 	commaSplitter := regexp.MustCompile(`\s*,\s*`)
 	excludeFields := commaSplitter.Split(*flagExcludeFields, -1)
 
+	ecsLenient := false
+	if cfgECSLenient, ok := cfg.GetBool("ecsLenient"); ok {
+		ecsLenient = cfgECSLenient
+	}
+
 	r, err := ecslog.NewRenderer(
 		shouldColorize,
 		*flagColorScheme,
 		formatName,
 		maxLineLen,
 		excludeFields,
+		ecsLenient,
 	)
 	if err != nil {
 		printError(err.Error())
