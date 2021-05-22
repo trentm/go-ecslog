@@ -1,7 +1,9 @@
 # This project uses https://goreleaser.com to handle its releases.
 #
-# Dry-run:
+# Dry-run of the goreleaser part:
 #   rm -rf dist && goreleaser release --snapshot --skip-publish
+#
+# A full release is done via `make cutarelease`.
 before:
   hooks:
     - go mod tidy
