@@ -79,6 +79,21 @@ func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 	})
 }
 
+func commonPrefixLen(a, b []byte) int {
+	shorter := len(a)
+	if len(b) < shorter {
+		shorter = len(b)
+	}
+
+	i := 0
+	for ; i < shorter; i++ {
+		if a[i] != b[i] {
+			break
+		}
+	}
+	return i
+}
+
 func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
 	var val *fastjson.Value
 	var logLogger []byte
@@ -111,9 +126,19 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 	//   typical winston: [@timestamp] LEVEL: message
 	if timestamp != nil {
 		b.WriteByte('[')
-		b.Write(timestamp)
+		cpLen := commonPrefixLen(r.lastTimestampBuf, timestamp)
+		if cpLen == 0 {
+			b.Write(timestamp)
+		} else {
+			r.painter.PaintAttrs(b, []ansipainter.Attribute{ansipainter.Faint})
+			b.Write(timestamp[:cpLen])
+			r.painter.Reset(b)
+			b.Write(timestamp[cpLen:])
+		}
 		b.WriteString("] ")
 	}
+	copy(r.lastTimestampBuf, timestamp)
+
 	if r.logLevel != "" {
 		r.painter.Paint(b, r.logLevel)
 		fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))

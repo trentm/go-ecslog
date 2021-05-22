@@ -1,5 +1,6 @@
 # top
 
+- timestamp diff highlighting: see musing section below
 - get examples from the other ecs-loggers, esp. zap has some differences
 - title line re-eval, configurability, -t option
   - Note that with no log.level (allowable with ecsLenient, e.g. kibana 8.x
@@ -54,6 +55,9 @@
       line number. What about ecslog (or another project) providing a small
       command to do that mapping (of log.origin.file.{name,line}) to local
       paths and/or GH links? Then provide docs on setting that up.
+- consider https://github.com/muesli/termenv for ANSI color handling.
+  Supports truecolor and degradation. Supports templates which might be
+  useful for config-based custom styling.
 - "http" output format -> fieldRenderers?
 - coloring for added zap and other levels (test case for this)
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
@@ -76,6 +80,23 @@
   for fuzzing-ish?
 - benchmarking to be able to test out "TODO perf" ideas
 - godoc and examples (https://blog.golang.org/examples)
+
+# musing on @timestamp highlighting
+
+A feature idea is to somehow highlight the *change* in @timestamp in consecutive
+log lines.
+
+  make;elog tmp/timestamp-highlighting.log -x process,http,url,user_agent
+
+TODO:
+- bug: it is emitting codes with coloring off (e.g. pipe to less)
+  HERE
+  This means making the Painter classes a little smarter: take a bool on
+  whether to paint, not just presence of role to attrs mapping.
+- make optional, on by default
+- other timestamp examples would be nice, if there is a TZ, it might be
+  nice to gray out a smart common *suffix*
+
 
 # musing on custom formats/profiles
 
@@ -109,7 +130,7 @@ a format now. *Or* could still be "format", but the default built-in formats
 
     ecslog -f trent
 
-If doing this (a format include the other attributes), then need to *not*
+If doing this (a format includes the other attributes), then need to *not*
 allow top-level attributes in config, i.e. NOT this
 
     # NOT this

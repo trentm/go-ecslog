@@ -111,11 +111,18 @@ func (p *ANSIPainter) Paint(b *strings.Builder, role string) {
 	}
 }
 
+// PaintAttrs will write the ANSI code to start styling with the given
+// attributes.
+func (p *ANSIPainter) PaintAttrs(b *strings.Builder, attrs []Attribute) {
+	b.WriteString(sgrFromAttrs(attrs))
+	p.painting = true
+}
+
 // Reset ... TODO:doc
 func (p *ANSIPainter) Reset(b *strings.Builder) {
-	// TODO: skip this if there wasn't a code given to previous Paint -> p.painting
 	if p.painting {
 		b.WriteString(sgrReset)
+		p.painting = false
 	}
 }
 
@@ -125,17 +132,22 @@ func New(attrsFromRole map[string][]Attribute) *ANSIPainter {
 	p := ANSIPainter{}
 	p.sgrFromRole = make(map[string]string)
 	for role, attrs := range attrsFromRole {
-		sgr := escape + "["
-		for i, attr := range attrs {
-			if i > 0 {
-				sgr += ";"
-			}
-			sgr += strconv.Itoa(int(attr))
-		}
-		sgr += "m"
-		p.sgrFromRole[role] = sgr
+		p.sgrFromRole[role] = sgrFromAttrs(attrs)
 	}
 	return &p
+}
+
+// sgrFromAttrs returns the ANSI escape code (SGR) for an array of attributes.
+func sgrFromAttrs(attrs []Attribute) string {
+	sgr := escape + "["
+	for i, attr := range attrs {
+		if i > 0 {
+			sgr += ";"
+		}
+		sgr += strconv.Itoa(int(attr))
+	}
+	sgr += "m"
+	return sgr
 }
 
 // NoColorPainter is a painter that emits no ANSI codes.

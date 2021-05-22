@@ -36,8 +36,9 @@ type Renderer struct {
 	kqlFilter     *kqlog.Filter
 	strict        bool
 
-	line     []byte // the raw input line
-	logLevel string // cached "log.level", read during isECSLoggingRecord
+	line             []byte // the raw input line
+	logLevel         string // cached "log.level", read during isECSLoggingRecord
+	lastTimestampBuf []byte // copy of timestamp from the previous log line
 }
 
 // NewRenderer returns a new ECS logging log renderer.
@@ -110,6 +111,10 @@ func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int,
 		maxLineLen:    maxLineLen,
 		excludeFields: excludeFields,
 		ecsLenient:    ecsLenient,
+
+		// Can a timestamp ever reasonably be longer than 64 chars?
+		// "2021-04-15T04:22:29.507Z" is 24.
+		lastTimestampBuf: make([]byte, 64),
 	}, nil
 }
 
