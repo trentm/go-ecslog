@@ -24,10 +24,9 @@
 - [ ] NOTICE.md (some BSD from go in lex.go, some MIT from fatih/color)
 - [ ] less-like pager?
 - [ ] basic intro docs in README
-- [ ] tests
+- [x] tests
   - [x] be resilient with type-errors and dotted-name collisions in other fields
     (i.e. don't want to spend time for full schema validation)
-  - [ ] examples from all the ecs-logging libs
 - [x] more robust dotted lookup
 - [ ] bug reporting facility on crash? Not sure we can with golang. Could just
   be a `--bug` CLI and github issue template with commands to gather and
