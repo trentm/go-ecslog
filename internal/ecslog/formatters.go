@@ -79,19 +79,154 @@ func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 	})
 }
 
-func commonPrefixLen(a, b []byte) int {
+// commonPrefixIdx returns the largest index into a and b for which the bytes
+// are the same -- `a[:idx] == b[:idx]`. idx will not exceed the length of the
+// shortest slice.
+func commonPrefixIdx(a, b []byte) int {
 	shorter := len(a)
 	if len(b) < shorter {
 		shorter = len(b)
 	}
 
-	i := 0
-	for ; i < shorter; i++ {
-		if a[i] != b[i] {
+	idx := 0
+	for ; idx < shorter; idx++ {
+		if a[idx] != b[idx] {
 			break
 		}
 	}
-	return i
+	return idx
+}
+
+// commonRFC3339TzIdx returns the index into *b* marking the start of the
+// RFC 3339 (https://datatracker.ietf.org/doc/html/rfc3339) timezone (called
+// "time-offset" in the spec) if:
+//  1. there is one, and
+//  2. if that time-offset is common to a and b.
+// Otherwise it returns -1.
+//
+// This is not doing a full RFC 3339 parse, so it is best effort.
+//
+// Examples:
+//   a=2021-05-20T22:50:44+07:00
+//   b=2021-05-22T00:12:34.567+07:00
+//   -> idx=23 (pointing to the '+')
+//
+//   a=2021-05-20T22:50:44Z
+//   b=2021-05-22T00:12:34Z
+//   -> idx=19 (pointing to the 'Z')
+func commonRFC3339TzIdx(a, b []byte) int {
+	if len(a) == 0 || len(b) == 0 {
+		return -1
+	}
+
+	if a[len(a)-1] == 'Z' {
+		if b[len(b)-1] == 'Z' {
+			return len(b) - 1
+		}
+		return -1
+	}
+
+	if len(a) < 6 || len(b) < 6 {
+		return -1
+	}
+
+	if bytes.Equal(a[len(a)-6:], b[len(b)-6:]) {
+		return len(b) - 6
+	}
+
+	return -1
+}
+
+// formatTimestamp will write a styled `@timestamp` field to `b`.
+// For example:
+//    `[2021-04-15T04:22:29.507Z] `
+//
+// If the `timestampShowDiff` config is true (the default), then given:
+//    lastTimestamp = '2021-05-20T22:50:44+00:00'
+//    @timestamp = '2021-05-20T22:51:23+00:00'
+// we expect:
+//    `[2021-05-20T22:51:23+00:00] `
+//     ^                         ^-- styled with role "timestamp"
+//      ^^^^^^^^^^^^^^^    ^^^^^^--- styled with role "timestampSame"
+//                     ^^^^--------- styled with role "timestampDiff"
+//
+// The `[` and `]` delimiters are styled with role "timestamp", unless the
+// whole timestamp is the same or different -- in which case the "timestampSame"
+// or "timestampDiff" role is used, respectively.
+func formatTimestamp(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
+	timestamp := jsonutils.ExtractValue(rec, "@timestamp").GetStringBytes()
+	if r.timestampShowDiff {
+		// If we are styling timestamp diffs, finish by making a copy
+		// of this timestamp for rendering the next record.
+		defer func() {
+			n := copy(r.lastTimestampBuf, timestamp)
+			r.lastTimestamp = r.lastTimestampBuf[:n]
+		}()
+	}
+
+	if timestamp == nil {
+		return
+	}
+
+	if !r.timestampShowDiff || r.lastTimestamp == nil {
+		// Not showing timestamp diffs, or this is the first timestamp.
+		r.painter.Paint(b, "timestamp")
+		b.WriteByte('[')
+		b.Write(timestamp)
+		b.WriteByte(']')
+		r.painter.Reset(b)
+		b.WriteByte(' ')
+		return
+	}
+
+	preIdx := commonPrefixIdx(r.lastTimestamp, timestamp)
+	if preIdx == len(timestamp) {
+		// Timestamps are the same.
+		r.painter.Paint(b, "timestampSame")
+		b.WriteByte('[')
+		b.Write(timestamp)
+		b.WriteByte(']')
+		r.painter.Reset(b)
+		b.WriteByte(' ')
+		return
+	}
+
+	sufIdx := commonRFC3339TzIdx(r.lastTimestamp, timestamp)
+	if preIdx == 0 && sufIdx == -1 {
+		// Timestamps are completely different.
+		r.painter.Paint(b, "timestampDiff")
+		b.WriteByte('[')
+		b.Write(timestamp)
+		b.WriteByte(']')
+		r.painter.Reset(b)
+		b.WriteByte(' ')
+		return
+	}
+
+	r.painter.Paint(b, "timestamp")
+	b.WriteByte('[')
+	r.painter.Reset(b)
+	if preIdx > 0 {
+		r.painter.Paint(b, "timestampSame")
+		b.Write(timestamp[:preIdx])
+		r.painter.Reset(b)
+	}
+	if sufIdx == -1 {
+		r.painter.Paint(b, "timestampDiff")
+		b.Write(timestamp[preIdx:])
+		r.painter.Reset(b)
+	} else {
+		r.painter.Paint(b, "timestampDiff")
+		b.Write(timestamp[preIdx:sufIdx])
+		r.painter.Reset(b)
+		r.painter.Paint(b, "timestampSame")
+		b.Write(timestamp[sufIdx:])
+		r.painter.Reset(b)
+	}
+	r.painter.Paint(b, "timestamp")
+	b.WriteByte(']')
+	r.painter.Reset(b)
+	b.WriteByte(' ')
 }
 
 func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder) {
@@ -109,7 +244,6 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 		hostHostname = val.GetStringBytes()
 	}
 
-	timestamp := jsonutils.ExtractValue(rec, "@timestamp").GetStringBytes()
 	message := jsonutils.ExtractValue(rec, "message").GetStringBytes()
 
 	// Title line pattern:
@@ -124,21 +258,7 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 	//   typical bunyan:  [@timestamp] LEVEL (name/pid on host): message
 	//   typical pino:    [@timestamp] LEVEL (pid on host): message
 	//   typical winston: [@timestamp] LEVEL: message
-	if timestamp != nil {
-		b.WriteByte('[')
-		cpLen := commonPrefixLen(r.lastTimestampBuf, timestamp)
-		if cpLen == 0 {
-			b.Write(timestamp)
-		} else {
-			r.painter.PaintAttrs(b, []ansipainter.Attribute{ansipainter.Faint})
-			b.Write(timestamp[:cpLen])
-			r.painter.Reset(b)
-			b.Write(timestamp[cpLen:])
-		}
-		b.WriteString("] ")
-	}
-	copy(r.lastTimestampBuf, timestamp)
-
+	formatTimestamp(r, rec, b)
 	if r.logLevel != "" {
 		r.painter.Paint(b, r.logLevel)
 		fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))

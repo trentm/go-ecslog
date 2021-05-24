@@ -103,7 +103,7 @@ Any of the following `ecslog` options can be set in a "~/.ecslog.toml" file.
 See https://toml.io/ for TOML syntax information.  The `--no-config` option can
 be used to ignore "~/.ecslog.toml", if there is one.
 
-For example:
+An example config:
 
 ```
 format="compact"
@@ -117,7 +117,7 @@ Set the output format name (a string, equivalent of `-f, --format` option).
 Valid values are: "default" (the default), "compact", "ecs", "simple"
 
 ```
-format="compact"
+format="default"
 ```
 
 ### config: color
@@ -138,7 +138,7 @@ records.  Valid values are: -1 (to use the default 16384), or a value between 1
 and 1048576 (inclusive).
 
 ```
-maxLineLen=32768
+maxLineLen=16384
 ```
 
 ### config: ecsLenient
@@ -154,7 +154,17 @@ those three fields. Set `ecsLenient` to true to tell `ecslog` to attempt to
 rendering any log record that has **at least one** of these fields.
 
 ```
-ecsLenient=true
+ecsLenient=false
+```
+
+### config: timestampShowDiff
+
+If coloring the output (see [config: color](#config-color) above), by default
+`ecslog` will style the change in the timestamp from the preceding log record.
+Set this config var to `false` to turn off this styling.
+
+```
+timestampShowDiff=true
 ```
 
 

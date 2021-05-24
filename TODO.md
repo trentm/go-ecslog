@@ -86,16 +86,12 @@
 A feature idea is to somehow highlight the *change* in @timestamp in consecutive
 log lines.
 
-  make;elog tmp/timestamp-highlighting.log -x process,http,url,user_agent
+  make
+  elog tmp/timestamp-highlighting.log -x process,http,url,user_agent
+  elog examples/apm-server.log -x log.origin
 
-TODO:
-- bug: it is emitting codes with coloring off (e.g. pipe to less)
-  HERE
-  This means making the Painter classes a little smarter: take a bool on
-  whether to paint, not just presence of role to attrs mapping.
-- make optional, on by default
-- other timestamp examples would be nice, if there is a TZ, it might be
-  nice to gray out a smart common *suffix*
+- perhaps tests -> one in ecslog_test.go
+- add "Features" section to README and a screenshot of this
 
 
 # musing on custom formats/profiles
