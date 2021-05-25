@@ -91,7 +91,6 @@ log lines.
   elog examples/apm-server.log -x log.origin
 
 - perhaps tests -> one in ecslog_test.go
-- add "Features" section to README and a screenshot of this
 
 
 # musing on custom formats/profiles

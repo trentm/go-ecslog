@@ -1,7 +1,8 @@
 # ecslog
 
-A CLI for pretty-printing (and filtering) of [ecs-logging](https://www.elastic.co/guide/en/ecs-logging/overview/master/intro.html)
-formatted log files.
+`ecslog` is a CLI for pretty-printing (and filtering) of log files in
+[ecs-logging](https://www.elastic.co/guide/en/ecs-logging/overview/master/intro.html)
+format.
 
 
 # Install
@@ -17,8 +18,22 @@ Or you can build from source via:
 
     git clone git@github.com:trentm/go-ecslog.git
     cd go-ecslog
-    make
+    make  # produces "./ecslog", a single binary you can put on your PATH
     ./ecslog --version
+
+# Features
+
+TODO
+
+## @timestamp diff highlighting
+
+By default, `ecslog` will highlight the change in a log record's `@timestamp`
+from the previous log record. With the "default" formatter the changed part
+of the timestamp is underlined. For example:
+
+![screenshot of @timestamp diff highlighting](./docs/img/timestamp-diff-highlighting.png)
+
+This can be turned off with the `timestampShowDiff=false` config var.
 
 
 # Goals
@@ -99,9 +114,9 @@ elide some fields, typically for compactness.
 
 # Config file
 
-Any of the following `ecslog` options can be set in a "~/.ecslog.toml" file.
+Any of the following `ecslog` options can be set in a `~/.ecslog.toml` file.
 See https://toml.io/ for TOML syntax information.  The `--no-config` option can
-be used to ignore "~/.ecslog.toml", if there is one.
+be used to ignore `~/.ecslog.toml`, if there is one.
 
 An example config:
 

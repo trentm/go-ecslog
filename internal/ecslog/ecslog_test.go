@@ -60,6 +60,14 @@ var renderFileTestCases = []renderFileTestCase{
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
 		"[2021-01-19T22:51:12.142Z] \x1b[32m INFO\x1b[0m: \x1b[36mhi\x1b[0m\n",
 	},
+	{
+		"timestamp diff highlighting 1",
+		"yes", "default", "default", false, "", "", true,
+		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}
+{"log.level":"info","@timestamp":"2021-01-19T22:51:23.456Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
+		"[2021-01-19T22:51:12.142Z] \x1b[32m INFO\x1b[0m: \x1b[36mhi\x1b[0m\n" +
+			"[2021-01-19T22:51:\x1b[4m23.456\x1b[0mZ] \x1b[32m INFO\x1b[0m: \x1b[36mhi\x1b[0m\n",
+	},
 
 	// KQL filtering
 	{
