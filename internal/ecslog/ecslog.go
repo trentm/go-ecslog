@@ -31,6 +31,7 @@ type Renderer struct {
 	formatter     Formatter
 	maxLineLen    int
 	excludeFields []string
+	includeFields []string
 	levelFilter   string
 	kqlFilter     *kqlog.Filter
 	strict        bool
@@ -48,7 +49,7 @@ type Renderer struct {
 // - `maxLineLen` a maximum number of bytes for a line that will be considered
 //   for log record processing. It must be a positive number between 1 and
 //   1048576 (2^20), or -1 to use the default value (16384).
-func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields []string) (*Renderer, error) {
+func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields, includeFields []string) (*Renderer, error) {
 	// Get appropriate "painter" for terminal coloring.
 	var painter *ansipainter.ANSIPainter
 	if shouldColorize == "auto" {
@@ -103,6 +104,7 @@ func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int,
 		formatter:     formatter,
 		maxLineLen:    maxLineLen,
 		excludeFields: excludeFields,
+		includeFields: includeFields,
 	}, nil
 }
 

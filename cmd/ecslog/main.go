@@ -47,6 +47,8 @@ var flagColorScheme = flags.StringP("color-scheme", "c", "default",
 	"Color scheme to use, if colorizing.") // hidden
 var flagExcludeFields = flags.StringP("exclude-fields", "x", "",
 	"Comma-separated list of fields to exclude from the output.")
+var flagIncludeFields = flags.StringP("include-fields", "i", "",
+	"Comma-separated list of fields to include in the output.")
 
 func printError(msg string) {
 	fmt.Fprintf(os.Stderr, "ecslog: error: %s\n", msg)
@@ -144,6 +146,7 @@ func main() {
 
 	commaSplitter := regexp.MustCompile(`\s*,\s*`)
 	excludeFields := commaSplitter.Split(*flagExcludeFields, -1)
+	includeFields := commaSplitter.Split(*flagIncludeFields, -1)
 
 	r, err := ecslog.NewRenderer(
 		shouldColorize,
@@ -151,6 +154,7 @@ func main() {
 		formatName,
 		maxLineLen,
 		excludeFields,
+		includeFields,
 	)
 	if err != nil {
 		printError(err.Error())
