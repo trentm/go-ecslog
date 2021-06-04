@@ -1,6 +1,6 @@
 # ecslog changelog
 
-## Unreleased
+## v0.4.0
 
 - Add [`@timestamp` diff highlighting](README.md#timestamp-diff-highlighting):
   the part of the timestamp that has changed from the preceding record is
