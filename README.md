@@ -10,6 +10,7 @@ format.
 For homebrew users:
 
     brew install trentm/tap/ecslog
+    # OR 'brew upgrade trentm/tap/ecslog' if you have it already
 
 Or download a pre-built binary package from [the releases page](https://github.com/trentm/go-ecslog/releases)
 and copy to somewhere on your PATH.
