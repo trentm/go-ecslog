@@ -23,12 +23,12 @@ Or you can build from source via:
 
 # Features
 
-TODO
+TODO: fill this out
 
-## @timestamp diff highlighting
+## `@timestamp` diff highlighting
 
 By default, `ecslog` will highlight the change in a log record's `@timestamp`
-from the previous log record. With the "default" formatter the changed part
+from the previous log record. With the "default" formatter, the changed part
 of the timestamp is underlined. For example:
 
 ![screenshot of @timestamp diff highlighting](./docs/img/timestamp-diff-highlighting.png)

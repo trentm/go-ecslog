@@ -1,6 +1,5 @@
 # top
 
-- timestamp diff highlighting: see musing section below
 - get examples from the other ecs-loggers, esp. zap has some differences
 - title line re-eval, configurability, -t option
   - Note that with no log.level (allowable with ecsLenient, e.g. kibana 8.x
@@ -8,8 +7,6 @@
 - README needs a once-over
 - review TODOs in the code
 - clear out all panic()s and probably lo?g.Fatal()s? Perhaps remove from 'lg' pkg
-- releases: because unsigned dev thing on Mac, it would be nice to get into
-  brew. Look at goreleaser again
 
 # mvp
 
@@ -37,14 +34,11 @@
 # docs
 
 - specify that multifile behaviour may change later to merge on @timestamp
+  (https://github.com/trentm/go-ecslog/issues/16)
 
 # later
 
 - learn about verifiable builds: https://goreleaser.com/customization/gomod/
-- Is there a way to do releases for macOS and not have users hit the
-  "Developer cannot be verified" error?
-  https://stackoverflow.com/questions/59890359/developer-cannot-be-verified-macos-error-exception-a-move-to-trash-b-cancel
-  Tarball? Zip? Installer? Verifying with mac somehow (ew)? Brew tap?
 - Clickable file+linenum. If the ECS log record includes file name and line
   fields (https://www.elastic.co/guide/en/ecs/current/ecs-log.html#field-log-origin-file-line)
   the it would be nice if the default rendering of that (perhaps in the title line?)
@@ -80,17 +74,6 @@
   for fuzzing-ish?
 - benchmarking to be able to test out "TODO perf" ideas
 - godoc and examples (https://blog.golang.org/examples)
-
-# musing on @timestamp highlighting
-
-A feature idea is to somehow highlight the *change* in @timestamp in consecutive
-log lines.
-
-  make
-  elog tmp/timestamp-highlighting.log -x process,http,url,user_agent
-  elog examples/apm-server.log -x log.origin
-
-- perhaps tests -> one in ecslog_test.go
 
 
 # musing on custom formats/profiles
