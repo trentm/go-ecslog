@@ -100,7 +100,7 @@ type ANSIPainter struct {
 	painting    bool
 }
 
-// Paint with write the ANSI code to start styling with the ANSI SGR configured
+// Paint will write the ANSI code to start styling with the ANSI SGR configured
 // for the given `role`.
 func (p *ANSIPainter) Paint(b *strings.Builder, role string) {
 	sgr, ok := p.sgrFromRole[role]
