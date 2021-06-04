@@ -25,19 +25,22 @@ const defaultMaxLineLen = 16384
 
 // Renderer is the class used to drive ECS log rendering (aka pretty printing).
 type Renderer struct {
-	parser        fastjson.Parser
-	painter       *ansipainter.ANSIPainter
-	formatName    string
-	formatter     Formatter
-	maxLineLen    int
-	excludeFields []string
-	ecsLenient    bool
-	levelFilter   string
-	kqlFilter     *kqlog.Filter
-	strict        bool
+	parser            fastjson.Parser
+	painter           *ansipainter.ANSIPainter
+	formatName        string
+	formatter         Formatter
+	maxLineLen        int
+	excludeFields     []string
+	ecsLenient        bool
+	timestampShowDiff bool
+	levelFilter       string
+	kqlFilter         *kqlog.Filter
+	strict            bool
 
-	line     []byte // the raw input line
-	logLevel string // cached "log.level", read during isECSLoggingRecord
+	line             []byte // the raw input line
+	logLevel         string // cached "log.level", read during isECSLoggingRecord
+	lastTimestampBuf []byte // buffer to hold lastTimestamp values
+	lastTimestamp    []byte // last @timestamp (a slice of lastTimestampBuf)
 }
 
 // NewRenderer returns a new ECS logging log renderer.
@@ -54,7 +57,9 @@ type Renderer struct {
 //   to be an ecs-logging record it must have ecs.version, log.level, and
 //   @timestamp. If this option is true, it will only require *one* of those
 //   fields to exist.
-func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields []string, ecsLenient bool) (*Renderer, error) {
+// - `timestampShowDiff` is a bool indicating if the @timestamp diff from the
+//   preceding log record should be styled.
+func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields []string, ecsLenient, timestampShowDiff bool) (*Renderer, error) {
 	// Get appropriate "painter" for terminal coloring.
 	var painter *ansipainter.ANSIPainter
 	if shouldColorize == "auto" {
@@ -79,6 +84,8 @@ func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int,
 		}
 	case "no":
 		painter = ansipainter.NoColorPainter
+		// No point in calculating timestamp diff if not styling.
+		timestampShowDiff = false
 	default:
 		return nil, fmt.Errorf("invalid value for shouldColorize: %s", shouldColorize)
 	}
@@ -104,12 +111,17 @@ func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int,
 	lg.Printf("create renderer: formatName=%q, shouldColorize=%q, colorScheme=%q, maxLineLen=%d\n",
 		formatName, shouldColorize, colorScheme, maxLineLen)
 	return &Renderer{
-		painter:       painter,
-		formatName:    formatName,
-		formatter:     formatter,
-		maxLineLen:    maxLineLen,
-		excludeFields: excludeFields,
-		ecsLenient:    ecsLenient,
+		painter:           painter,
+		formatName:        formatName,
+		formatter:         formatter,
+		maxLineLen:        maxLineLen,
+		excludeFields:     excludeFields,
+		ecsLenient:        ecsLenient,
+		timestampShowDiff: timestampShowDiff,
+
+		// Can a timestamp ever reasonably be longer than 64 chars?
+		// "2021-04-15T04:22:29.507Z" is 24.
+		lastTimestampBuf: make([]byte, 64),
 	}, nil
 }
 

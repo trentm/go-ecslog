@@ -150,6 +150,11 @@ func main() {
 		ecsLenient = cfgECSLenient
 	}
 
+	timestampShowDiff := true
+	if cfgTimestampShowDiff, ok := cfg.GetBool("timestampShowDiff"); ok {
+		timestampShowDiff = cfgTimestampShowDiff
+	}
+
 	r, err := ecslog.NewRenderer(
 		shouldColorize,
 		*flagColorScheme,
@@ -157,6 +162,7 @@ func main() {
 		maxLineLen,
 		excludeFields,
 		ecsLenient,
+		timestampShowDiff,
 	)
 	if err != nil {
 		printError(err.Error())

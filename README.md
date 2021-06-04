@@ -1,7 +1,8 @@
 # ecslog
 
-A CLI for pretty-printing (and filtering) of [ecs-logging](https://www.elastic.co/guide/en/ecs-logging/overview/master/intro.html)
-formatted log files.
+`ecslog` is a CLI for pretty-printing (and filtering) of log files in
+[ecs-logging](https://www.elastic.co/guide/en/ecs-logging/overview/master/intro.html)
+format.
 
 
 # Install
@@ -17,8 +18,22 @@ Or you can build from source via:
 
     git clone git@github.com:trentm/go-ecslog.git
     cd go-ecslog
-    make
+    make  # produces "./ecslog", a single binary you can put on your PATH
     ./ecslog --version
+
+# Features
+
+TODO: fill this out
+
+## `@timestamp` diff highlighting
+
+By default, `ecslog` will highlight the change in a log record's `@timestamp`
+from the previous log record. With the "default" formatter, the changed part
+of the timestamp is underlined. For example:
+
+![screenshot of @timestamp diff highlighting](./docs/img/timestamp-diff-highlighting.png)
+
+This can be turned off with the `timestampShowDiff=false` config var.
 
 
 # Goals
@@ -99,11 +114,11 @@ elide some fields, typically for compactness.
 
 # Config file
 
-Any of the following `ecslog` options can be set in a "~/.ecslog.toml" file.
+Any of the following `ecslog` options can be set in a `~/.ecslog.toml` file.
 See https://toml.io/ for TOML syntax information.  The `--no-config` option can
-be used to ignore "~/.ecslog.toml", if there is one.
+be used to ignore `~/.ecslog.toml`, if there is one.
 
-For example:
+An example config:
 
 ```
 format="compact"
@@ -117,7 +132,7 @@ Set the output format name (a string, equivalent of `-f, --format` option).
 Valid values are: "default" (the default), "compact", "ecs", "simple"
 
 ```
-format="compact"
+format="default"
 ```
 
 ### config: color
@@ -138,7 +153,7 @@ records.  Valid values are: -1 (to use the default 16384), or a value between 1
 and 1048576 (inclusive).
 
 ```
-maxLineLen=32768
+maxLineLen=16384
 ```
 
 ### config: ecsLenient
@@ -154,7 +169,17 @@ those three fields. Set `ecsLenient` to true to tell `ecslog` to attempt to
 rendering any log record that has **at least one** of these fields.
 
 ```
-ecsLenient=true
+ecsLenient=false
+```
+
+### config: timestampShowDiff
+
+If coloring the output (see [config: color](#config-color) above), by default
+`ecslog` will style the change in the timestamp from the preceding log record.
+Set this config var to `false` to turn off this styling.
+
+```
+timestampShowDiff=true
 ```
 
 

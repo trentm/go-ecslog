@@ -7,8 +7,6 @@
 - README needs a once-over
 - review TODOs in the code
 - clear out all panic()s and probably lo?g.Fatal()s? Perhaps remove from 'lg' pkg
-- releases: because unsigned dev thing on Mac, it would be nice to get into
-  brew. Look at goreleaser again
 
 # mvp
 
@@ -36,14 +34,11 @@
 # docs
 
 - specify that multifile behaviour may change later to merge on @timestamp
+  (https://github.com/trentm/go-ecslog/issues/16)
 
 # later
 
 - learn about verifiable builds: https://goreleaser.com/customization/gomod/
-- Is there a way to do releases for macOS and not have users hit the
-  "Developer cannot be verified" error?
-  https://stackoverflow.com/questions/59890359/developer-cannot-be-verified-macos-error-exception-a-move-to-trash-b-cancel
-  Tarball? Zip? Installer? Verifying with mac somehow (ew)? Brew tap?
 - Clickable file+linenum. If the ECS log record includes file name and line
   fields (https://www.elastic.co/guide/en/ecs/current/ecs-log.html#field-log-origin-file-line)
   the it would be nice if the default rendering of that (perhaps in the title line?)
@@ -54,6 +49,9 @@
       line number. What about ecslog (or another project) providing a small
       command to do that mapping (of log.origin.file.{name,line}) to local
       paths and/or GH links? Then provide docs on setting that up.
+- consider https://github.com/muesli/termenv for ANSI color handling.
+  Supports truecolor and degradation. Supports templates which might be
+  useful for config-based custom styling.
 - "http" output format -> fieldRenderers?
 - coloring for added zap and other levels (test case for this)
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
@@ -76,6 +74,7 @@
   for fuzzing-ish?
 - benchmarking to be able to test out "TODO perf" ideas
 - godoc and examples (https://blog.golang.org/examples)
+
 
 # musing on custom formats/profiles
 
@@ -109,7 +108,7 @@ a format now. *Or* could still be "format", but the default built-in formats
 
     ecslog -f trent
 
-If doing this (a format include the other attributes), then need to *not*
+If doing this (a format includes the other attributes), then need to *not*
 allow top-level attributes in config, i.e. NOT this
 
     # NOT this

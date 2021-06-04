@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add [`@timestamp` diff highlighting](README.md#timestamp-diff-highlighting):
+  the part of the timestamp that has changed from the preceding record is
+  underlined (in the default color scheme). This highlighting can be turned
+  off with the `timestampShowDiff: false` config var.
+  ([#20](https://github.com/trentm/go-ecslog/pull/20))
+
 - Add `ecsLenient: false` config option to allow rendering of lines that are
   likely ECS-compatible, but do not have all three required ecs-logging fields:
   `@timestamp`, `ecs.version`, `log.level`. Only one of those three is required

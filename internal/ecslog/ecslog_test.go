@@ -9,22 +9,26 @@ import (
 )
 
 type renderFileTestCase struct {
-	name           string
-	shouldColorize string
-	colorScheme    string
-	formatName     string
-	ecsLenient     bool
-	levelFilter    string
-	kqlFilter      string
-	input          string
-	output         string
+	name string
+
+	// Renderer options
+	shouldColorize    string
+	colorScheme       string
+	formatName        string
+	ecsLenient        bool
+	levelFilter       string
+	kqlFilter         string
+	timestampShowDiff bool
+
+	input  string
+	output string
 }
 
 var renderFileTestCases = []renderFileTestCase{
 	// Non-ecs-logging lines
 	{
 		"empty object",
-		"no", "", "default", false, "", "",
+		"no", "", "default", false, "", "", false,
 		"{}",
 		"{}\n",
 	},
@@ -32,19 +36,19 @@ var renderFileTestCases = []renderFileTestCase{
 	// Basics
 	{
 		"basic",
-		"no", "", "default", false, "", "",
+		"no", "", "default", false, "", "", false,
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n",
 	},
 	{
 		"basic, extra var",
-		"no", "", "default", false, "", "",
+		"no", "", "default", false, "", "", false,
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi","foo":"bar"}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n    foo: \"bar\"\n",
 	},
 	{
 		"no message is allowed",
-		"no", "", "default", false, "", "",
+		"no", "", "default", false, "", "", false,
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"foo":"bar"}`,
 		"[2021-01-19T22:51:12.142Z]  INFO:\n    foo: \"bar\"\n",
 	},
@@ -52,33 +56,41 @@ var renderFileTestCases = []renderFileTestCase{
 	// Coloring
 	{
 		"coloring 1",
-		"yes", "default", "default", false, "", "",
+		"yes", "default", "default", false, "", "", false,
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
 		"[2021-01-19T22:51:12.142Z] \x1b[32m INFO\x1b[0m: \x1b[36mhi\x1b[0m\n",
+	},
+	{
+		"timestamp diff highlighting 1",
+		"yes", "default", "default", false, "", "", true,
+		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}
+{"log.level":"info","@timestamp":"2021-01-19T22:51:23.456Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
+		"[2021-01-19T22:51:12.142Z] \x1b[32m INFO\x1b[0m: \x1b[36mhi\x1b[0m\n" +
+			"[2021-01-19T22:51:\x1b[4m23.456\x1b[0mZ] \x1b[32m INFO\x1b[0m: \x1b[36mhi\x1b[0m\n",
 	},
 
 	// KQL filtering
 	{
 		"kql filtering, yep",
-		"no", "", "default", false, "", "foo:bar",
+		"no", "", "default", false, "", "foo:bar", false,
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi","foo":"bar"}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n    foo: \"bar\"\n",
 	},
 	{
 		"kql filtering, nope",
-		"no", "", "default", false, "", "foo:baz",
+		"no", "", "default", false, "", "foo:baz", false,
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi","foo":"bar"}`,
 		"",
 	},
 	{
 		"kql filtering, log.level range query, yep",
-		"no", "", "default", false, "", "log.level > debug",
+		"no", "", "default", false, "", "log.level > debug", false,
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n",
 	},
 	{
 		"kql filtering, log.level range query, nope",
-		"no", "", "default", false, "", "log.level > warn",
+		"no", "", "default", false, "", "log.level > warn", false,
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
 		"",
 	},
@@ -86,25 +98,25 @@ var renderFileTestCases = []renderFileTestCase{
 	// ecsLenient
 	{
 		"lenient: missing log.level",
-		"no", "", "default", true, "", "",
+		"no", "", "default", true, "", "", false,
 		`{"@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
 		"[2021-01-19T22:51:12.142Z] : hi\n",
 	},
 	{
 		"lenient: missing @timestamp",
-		"no", "", "default", true, "", "",
+		"no", "", "default", true, "", "", false,
 		`{"log.level":"info","ecs":{"version":"1.5.0"},"message":"hi"}`,
 		" INFO: hi\n",
 	},
 	{
 		"lenient: missing ecs.version",
-		"no", "", "default", true, "", "",
+		"no", "", "default", true, "", "", false,
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","message":"hi"}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n",
 	},
 	{
 		"lenient: @timestamp only",
-		"no", "", "default", true, "", "",
+		"no", "", "default", true, "", "", false,
 		`{"@timestamp":"2021-01-19T22:51:12.142Z","message":"hi"}`,
 		"[2021-01-19T22:51:12.142Z] : hi\n",
 	},
@@ -120,6 +132,7 @@ func TestRenderFile(t *testing.T) {
 				-1,
 				[]string{},
 				tc.ecsLenient,
+				tc.timestampShowDiff,
 			)
 			if err != nil {
 				t.Errorf("ecslog.NewRenderer(%q, %q, %q) error: %s",

@@ -100,7 +100,8 @@ type ANSIPainter struct {
 	painting    bool
 }
 
-// Paint ... TODO:doc
+// Paint with write the ANSI code to start styling with the ANSI SGR configured
+// for the given `role`.
 func (p *ANSIPainter) Paint(b *strings.Builder, role string) {
 	sgr, ok := p.sgrFromRole[role]
 	if ok {
@@ -111,11 +112,18 @@ func (p *ANSIPainter) Paint(b *strings.Builder, role string) {
 	}
 }
 
-// Reset ... TODO:doc
+// PaintAttrs will write the ANSI code to start styling with the given
+// attributes.
+func (p *ANSIPainter) PaintAttrs(b *strings.Builder, attrs []Attribute) {
+	b.WriteString(sgrFromAttrs(attrs))
+	p.painting = true
+}
+
+// Reset will write the ANSI SGR to reset styling, if necessary.
 func (p *ANSIPainter) Reset(b *strings.Builder) {
-	// TODO: skip this if there wasn't a code given to previous Paint -> p.painting
 	if p.painting {
 		b.WriteString(sgrReset)
+		p.painting = false
 	}
 }
 
@@ -125,17 +133,24 @@ func New(attrsFromRole map[string][]Attribute) *ANSIPainter {
 	p := ANSIPainter{}
 	p.sgrFromRole = make(map[string]string)
 	for role, attrs := range attrsFromRole {
-		sgr := escape + "["
-		for i, attr := range attrs {
-			if i > 0 {
-				sgr += ";"
-			}
-			sgr += strconv.Itoa(int(attr))
+		if len(attrs) > 0 {
+			p.sgrFromRole[role] = sgrFromAttrs(attrs)
 		}
-		sgr += "m"
-		p.sgrFromRole[role] = sgr
 	}
 	return &p
+}
+
+// sgrFromAttrs returns the ANSI escape code (SGR) for an array of attributes.
+func sgrFromAttrs(attrs []Attribute) string {
+	sgr := escape + "["
+	for i, attr := range attrs {
+		if i > 0 {
+			sgr += ";"
+		}
+		sgr += strconv.Itoa(int(attr))
+	}
+	sgr += "m"
+	return sgr
 }
 
 // NoColorPainter is a painter that emits no ANSI codes.
@@ -156,7 +171,7 @@ var BunyanPainter = New(map[string][]Attribute{
 var PinoPrettyPainter = New(map[string][]Attribute{
 	"message": {FgCyan},
 	"trace":   {FgHiBlack}, // FgHiBlack is chalk's conversion of "grey".
-	"debug":   {FgBlue},    // TODO: is this blue visible on cmd.exe?
+	"debug":   {FgBlue},    // TODO: is this blue visible on cmd.exe defaults?
 	"info":    {FgGreen},
 	"warn":    {FgYellow},
 	"error":   {FgRed},
@@ -164,9 +179,15 @@ var PinoPrettyPainter = New(map[string][]Attribute{
 })
 
 // DefaultPainter implements the stock default color scheme for `ecslog`.
-// TODO: test on windows
-// TODO: could add styles for punctuation (jq bolds them, I'd tend to make them faint)
+//
+// On timestamp styling: I wanted this to be somewhat subtle but not too subtle
+// to be able to read. I like timestampDiff=Underline or timestampSame=Faint,
+// but not both together. Anything else was too subtle (Italic) or too
+// distracting (fg or bg colors). Perhaps with True Color this could be better.
 var DefaultPainter = New(map[string][]Attribute{
+	"timestamp":     {},
+	"timestampSame": {},
+	"timestampDiff": {Underline},
 	"message":       {FgCyan},
 	"extraField":    {Bold},
 	"jsonObjectKey": {FgHiBlue},
