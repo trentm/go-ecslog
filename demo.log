@@ -1,24 +1,20 @@
-# non-ECS lines
+{"log.level":"trace","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"an ecs-logging record has a @timestamp, log.level, and message"}
+{"log.level":"debug","@timestamp":"2021-01-19T22:51:13.335Z","ecs":{"version":"1.5.0"},"message":"`ecslog` styles each level differently"}
+{"log.level":"info","@timestamp":"2021-01-19T22:51:13.412Z","ecs":{"version":"1.5.0"},"message":"level names are padded to 5 spaces to line up"}
+{"log.level":"warn","@timestamp":"2021-01-19T22:52:21.253Z","ecs":{"version":"1.5.0"},"message":"@timestamp diffs are highlighted"}
+{"log.level":"error","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"oops"}
+{"log.level":"fatal","@timestamp":"2021-01-20T03:32:59.643Z","ecs":{"version":"1.5.0"},"message":"boom"}
+
+# non-ECS lines are passed through unchanged (useful for mixed format logs)
 this line isn't in ECS format
 {"nor":"is this line"}
-["nor","is this line",3]
 {"this":"is invalid JSON
 
-# show off the level colors
-{"log.level":"trace","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}
-{"log.level":"debug","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}
-{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}
-{"log.level":"warn","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}
-{"log.level":"error","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}
-{"log.level":"fatal","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"level colors"}
+# some common fields are in the "title" line, the rest on subsequent lines
+{"log.level":"info","@timestamp":"2021-01-20T03:42:59.643Z","ecs":{"version":"1.5.0"},"host":{"hostname":"pink.local"},"message":"the host.hostname field"}
+{"log.level":"info","@timestamp":"2021-01-20T11:53:38.145Z","ecs":{"version":"1.5.0"},"process":{"pid":82240},"host":{"hostname":"pink.local"},"message":"the log.logger field 'foo'","log.logger":"foo"}
 
-# show fields that are in the default title line
-{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"host":{"hostname":"pink.local"},"message":"add host.hostname"}
-{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"process":{"pid":82240},"host":{"hostname":"pink.local"},"message":"add log.logger, process.pid","log.logger":"foo"}
-{"log.level":"info","@timestamp":"2021-01-19T22:51:12.143Z","ecs.version":"1.5.0","process":{"pid":82240},"host":{"hostname":"pink.local"},"log":{"logger":"bar"},"message":"log.logger 2nd form, ecs.foo","ecs":{"foo":"bar"}}
-
-# show some extra fields from ecs-logging libs, shows multiline rendering
-{"log.level":"info","@timestamp":"2021-02-11T06:24:50.564Z","ecs":{"version":"1.5.0"},"host":{"hostname":"purple.local"},"http":{"version":"1.1","request":{"method":"get","headers":{"host":"localhost:3000","accept":"*/*"}},"response":{"status_code":200,"headers":{"x-powered-by":"Express","foo":"Bar"}}},"url":{"full":"http://localhost:3000/","path":"/","domain":"localhost"},"user_agent":{"original":"curl/7.64.1"},"message":"http fields"}
-{"log.level":"warn","@timestamp":"2021-02-11T06:24:53.251Z","ecs":{"version":"1.5.0"},"host":{"hostname":"purple.local"},"error":{"type":"Error","message":"boom","stack_trace":"Error: boom\n    at /Users/trentm/el/ecs-logging-nodejs/loggers/pino/examples/express-simple.js:67:15\n    at Layer.handle [as handle_request] (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/layer.js:95:5)\n    at next (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/route.js:137:13)\n    at Route.dispatch (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/route.js:112:3)\n    at Layer.handle [as handle_request] (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/layer.js:95:5)\n    at /Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/index.js:281:22\n    at Function.process_params (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/index.js:335:12)\n    at next (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/index.js:275:10)\n    at /Users/trentm/el/ecs-logging-nodejs/loggers/pino/examples/express-simple.js:39:5\n    at Layer.handle [as handle_request] (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/layer.js:95:5)"},"message":"error fields"}
-
-{"log.level":"info","@timestamp":"2021-01-19T22:51:12.143Z","ecs.version":"1.5.0","host":{"hostname":"pink.local"},"log":{"logger":"bar"},"message":"extra field types","yup":true,"nope":false,"null":null,"str":"string","num":3.14159,"array":["one",2,{"three":3}],"obj":{"foo":"bar"}}
+# multi-line fields are rendered with line breaks
+{"log.level":"warn","@timestamp":"2021-02-11T06:24:53.251Z","ecs":{"version":"1.5.0"},"host":{"hostname":"purple.local"},"error":{"type":"Error","message":"boom","stack_trace":"Error: boom\n    at /Users/trentm/el/ecs-logging-nodejs/loggers/pino/examples/express-simple.js:67:15\n    at Layer.handle [as handle_request] (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/layer.js:95:5)\n    at next (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/route.js:137:13)\n    at Route.dispatch (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/route.js:112:3)\n    at Layer.handle [as handle_request] (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/layer.js:95:5)\n    at /Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/index.js:281:22\n    at Function.process_params (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/index.js:335:12)\n    at next (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/index.js:275:10)\n    at /Users/trentm/el/ecs-logging-nodejs/loggers/pino/examples/express-simple.js:39:5\n    at Layer.handle [as handle_request] (/Users/trentm/el/ecs-logging-nodejs/loggers/pino/node_modules/express/lib/router/layer.js:95:5)"},"message":"ECS fields for errors"}
+{"log.level":"info","@timestamp":"2021-02-11T06:24:50.564Z","ecs":{"version":"1.5.0"},"host":{"hostname":"purple.local"},"http":{"version":"1.1","request":{"method":"get","headers":{"host":"localhost:3000","accept":"*/*"}},"response":{"status_code":200,"headers":{"x-powered-by":"Express","foo":"Bar"}}},"url":{"full":"http://localhost:3000/","path":"/","domain":"localhost"},"user_agent":{"original":"curl/7.64.1"},"message":"ECS fields for http data"}
+{"log.level":"info","@timestamp":"2021-01-19T22:51:12.143Z","ecs.version":"1.5.0","host":{"hostname":"pink.local"},"log":{"logger":"bar"},"message":"styling for JSON types","yup":true,"nope":false,"null":null,"str":"string","num":3.14159,"array":["one",2,{"three":3}],"obj":{"foo":"bar"}}

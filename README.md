@@ -22,6 +22,11 @@ Or you can build from source via:
     make  # produces "./ecslog", a single binary you can put on your PATH
     ./ecslog --version
 
+Then, try it on a demo log file:
+
+    curl -s https://raw.githubusercontent.com/trentm/go-ecslog/main/demo.log \
+        | ecslog
+
 # Features
 
 TODO: fill this out
