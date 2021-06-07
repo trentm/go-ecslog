@@ -1,9 +1,10 @@
 # ecslog
 
-`ecslog` is a CLI for pretty-printing (and filtering) of log files in
+`ecslog` is a CLI for pretty-printing and filtering log files in
 [ecs-logging](https://www.elastic.co/guide/en/ecs-logging/overview/master/intro.html)
 format.
 
+![ecslog demo screenshot](./docs/img/intro-demo.png)
 
 # Install
 
@@ -27,9 +28,44 @@ Then, try it on a demo log file:
     curl -s https://raw.githubusercontent.com/trentm/go-ecslog/main/demo.log \
         | ecslog
 
-# Features
+# Introduction
 
-TODO: fill this out
+By default `ecslog` pretty-prints log data in the given file arguments or passed
+in on stdin. Behaviour can be customised by options or a `~/.ecslog.toml` config
+file.
+
+
+## Level filtering
+
+Use `-l LEVEL-NAME` to only show log records at that level or above.
+
+![ecslog level filtering](./docs/img/level-filtering.png)
+
+(ECS does not mandate level names, so `ecslog` uses [a best-effort ordering](https://github.com/trentm/go-ecslog/blob/v0.4.0/internal/ecslog/ecslog.go#L150-L168) of level names in common usage.)
+
+
+## KQL filtering
+
+Use [KQL](https://www.elastic.co/guide/en/kibana/current/kuery-query.html), as you would in Kibana, to filter log records.
+
+![ecslog KQL filtering](./docs/img/kql-filtering-1.png)
+
+Some examples:
+
+- Filter on the "message" field by default: `ecslog ./examples/api-server.log -k '*ILM*'`
+- Filter on logger name (the `log.logger` field in ECS): `ecslog ./examples/api-server.log -k 'log.logger: pipeline'`
+- Filter on slow requests: `ecslog ./example/apm-server.log -k 'event.duration > 500000'`
+
+Note that this is a subset of KQL and necessarily slightly adapted for use on log files without an Elasticsearch mapping for field types. See [internal/kqlog/README.md](./internal/kqlog/README.md) for details.
+
+
+## `-x FIELDS-TO-EXCLUDE`
+
+Sometimes it can help to focus by eliding some distracting fields. Use `-x FIELD,FIELD,...`
+to exclude named fields from the rendered output.
+
+![ecslog exclude fields](./docs/img/exclude-fields.png)
+
 
 ## `@timestamp` diff highlighting
 
@@ -40,6 +76,19 @@ of the timestamp is underlined. For example:
 ![screenshot of @timestamp diff highlighting](./docs/img/timestamp-diff-highlighting.png)
 
 This can be turned off with the `timestampShowDiff=false` config var.
+
+
+<!--
+## formats
+
+XXX
+      --strict                  Suppress all but legal ECS log lines. By default
+                                non-JSON and non-ecs-logging lines are passed through.
+  -f, --format string           Output format for rendered ECS log records.
+                                Valid formats are: 'default', 'compact', 'ecs', and 'simple'.
+
+-->
+
 
 
 # Goals
