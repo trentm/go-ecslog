@@ -154,17 +154,19 @@ func (r *Renderer) SetStrictFilter(strict bool) {
 //
 // - zap: https://pkg.go.dev/go.uber.org/zap/#AtomicLevel.MarshalText
 // - bunyan: https://github.com/trentm/node-bunyan/tree/master/#levels
+// - elasticsearch emits "DEPRECATION" as a level; we equate that with WARN
 // - ...
 var levelValFromName = map[string]int{
-	"trace":   10,
-	"debug":   20,
-	"info":    30,
-	"warn":    40,
-	"warning": 40,
-	"error":   50,
-	"dpanic":  60,
-	"panic":   70,
-	"fatal":   80,
+	"trace":       10,
+	"debug":       20,
+	"info":        30,
+	"deprecation": 40,
+	"warn":        40,
+	"warning":     40,
+	"error":       50,
+	"dpanic":      60,
+	"panic":       70,
+	"fatal":       80,
 }
 
 // LogLevelLess returns true iff level1 is less than level2.

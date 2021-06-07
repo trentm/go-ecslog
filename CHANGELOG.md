@@ -1,5 +1,12 @@
 # ecslog changelog
 
+## Unreleased
+
+- Add "DEPRECATION" level (with same sort order as WARN) found in elasticsearch
+  8.x logs.
+
+- Fix an issue where coloring did not handle uppercase level names.
+
 ## v0.4.0
 
 - Add [`@timestamp` diff highlighting](README.md#timestamp-diff-highlighting):

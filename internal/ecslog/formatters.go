@@ -260,7 +260,7 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 	//   typical winston: [@timestamp] LEVEL: message
 	formatTimestamp(r, rec, b)
 	if r.logLevel != "" {
-		r.painter.Paint(b, r.logLevel)
+		r.painter.Paint(b, strings.ToLower(r.logLevel))
 		fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))
 		r.painter.Reset(b)
 	}
@@ -409,7 +409,7 @@ func (f *simpleFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *stri
 	message := jsonutils.ExtractValue(rec, "message").GetStringBytes()
 
 	if r.logLevel != "" {
-		r.painter.Paint(b, r.logLevel)
+		r.painter.Paint(b, strings.ToLower(r.logLevel))
 		fmt.Fprintf(b, "%5s", strings.ToUpper(r.logLevel))
 		r.painter.Reset(b)
 	}

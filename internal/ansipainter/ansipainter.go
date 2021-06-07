@@ -197,12 +197,17 @@ var DefaultPainter = New(map[string][]Attribute{
 	"jsonFalse":     {Italic, FgRed},
 	"jsonNull":      {Italic, Bold, FgBlack},
 	"ellipsis":      {Faint},
-	"trace":         {FgHiBlack},
-	"debug":         {FgHiBlue},
-	"info":          {FgGreen},
-	"warn":          {FgYellow},
-	"error":         {FgRed},
-	"fatal":         {BgRed},
+	// log.level names (see ecslog.go#levelValFromName for known names)
+	"trace":       {FgHiBlack},
+	"debug":       {FgHiBlue},
+	"info":        {FgGreen},
+	"deprecation": {FgYellow},
+	"warn":        {FgYellow},
+	"warning":     {FgYellow},
+	"error":       {FgRed},
+	"dpanic":      {FgRed},
+	"panic":       {FgRed},
+	"fatal":       {BgRed},
 })
 
 // PainterFromName maps known painter name to an ANSIPainter.
