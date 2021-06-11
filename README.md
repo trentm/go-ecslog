@@ -56,6 +56,9 @@ XXX
 
 ![ecslog level filtering](./docs/img/level-filtering.png)
 
+w100
+![ecslog level filtering](./docs/img/level-filtering-w100.png)
+
 50%:
 
 <img src="./docs/img/level-filtering.png" alt="ecslog level filtering" width="50%" height="50%">
