@@ -52,6 +52,7 @@
   Supports truecolor and degradation. Supports templates which might be
   useful for config-based custom styling.
 - "http" output format -> fieldRenderers?
+- highlighting hits from KQL filtering would be really nice
 - coloring for added zap and other levels (test case for this)
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with

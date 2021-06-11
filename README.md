@@ -2,7 +2,9 @@
 
 `ecslog` is a CLI for pretty-printing and filtering log files in
 [ecs-logging](https://www.elastic.co/guide/en/ecs-logging/overview/master/intro.html)
-format.
+format. It is a single (Go-implemented) binary, with builds for Linux, Mac, and
+Windows. Its default styling should play nice with both light and
+dark-background terminals.
 
 ![ecslog demo screenshot](./docs/img/intro-demo.png)
 
@@ -30,9 +32,20 @@ Then, try it on a demo log file:
 
 # Introduction
 
-By default `ecslog` pretty-prints log data in the given file arguments or passed
-in on stdin. Behaviour can be customised by options or a `~/.ecslog.toml` config
-file.
+`ecslog` pretty-prints log data in the given file arguments:
+
+    ecslog /var/log/some.log [other-log-files...]
+
+or passed in on stdin
+
+    node server.js | ecslog
+    tail -f /var/log/some.log | ecslog
+    docker logs -f my-container | ecslog
+
+The default behaviour can be customised by CLI options (use `ecslog --help` to
+list all options) and/or a `~/.ecslog.toml` config file (see
+[Configuration](#configuration) below).  The rest of this section describes some
+features of ecslog.
 
 
 ## Level filtering
@@ -41,25 +54,27 @@ Use `-l LEVEL-NAME` to only show log records at that level or above.
 
 ![ecslog level filtering](./docs/img/level-filtering.png)
 
-(ECS does not mandate level names, so `ecslog` uses [a best-effort ordering](https://github.com/trentm/go-ecslog/blob/v0.4.0/internal/ecslog/ecslog.go#L150-L168) of level names in common usage.)
+([ECS](https://www.elastic.co/guide/en/ecs/current/ecs-log.html#field-log-level)
+does not mandate level names, so `ecslog` uses [a best-effort ordering](https://github.com/trentm/go-ecslog/blob/v0.4.0/internal/ecslog/ecslog.go#L150-L168)
+of level names in common usage.)
 
 
 ## KQL filtering
 
-Use [KQL](https://www.elastic.co/guide/en/kibana/current/kuery-query.html), as you would in Kibana, to filter log records.
+Use `-k KQL` to filter log records using [KQL](https://www.elastic.co/guide/en/kibana/current/kuery-query.html), as you would in Kibana.
 
 ![ecslog KQL filtering](./docs/img/kql-filtering-1.png)
 
 Some examples:
 
-- Filter on the "message" field by default: `ecslog ./examples/api-server.log -k '*ILM*'`
-- Filter on logger name (the `log.logger` field in ECS): `ecslog ./examples/api-server.log -k 'log.logger: pipeline'`
+- Filter on the "message" field by default: `ecslog ./examples/apm-server.log -k '*ILM*'`
+- Filter on logger name (the `log.logger` field in ECS): `ecslog ./examples/apm-server.log -k 'log.logger: pipeline'`
 - Filter on slow requests: `ecslog ./example/apm-server.log -k 'event.duration > 500000'`
 
 Note that this is a subset of KQL and necessarily slightly adapted for use on log files without an Elasticsearch mapping for field types. See [internal/kqlog/README.md](./internal/kqlog/README.md) for details.
 
 
-## `-x FIELDS-TO-EXCLUDE`
+## Exclude fields from rendering
 
 Sometimes it can help to focus by eliding some distracting fields. Use `-x FIELD,FIELD,...`
 to exclude named fields from the rendered output.
@@ -75,55 +90,41 @@ of the timestamp is underlined. For example:
 
 ![screenshot of @timestamp diff highlighting](./docs/img/timestamp-diff-highlighting.png)
 
-This can be turned off with the `timestampShowDiff=false` config var.
+This can be turned off with the [`timestampShowDiff=false` config var](#config-timestampshowdiff).
 
+
+## `ecsLenient` for almost-ecs-logging format logs
+
+The [ecs-logging spec](https://github.com/elastic/ecs-logging/blob/master/spec/spec.json)
+mandates all of the `ecs.version`, `log.level`, and `@timestamp` fields. Given
+that ecs-logging is a relatively new spec, some applications, in the process of
+migrating, are *almost* conformant. Add `ecsLenient=true` to `~/.ecslog.toml` to
+only require that log lines have *one* of these fields to be considered an
+ecs-logging record.
 
 <!--
-## formats
+XXX images are too big: scale? or make wider
+  XXX drop the drop shadow? Takes up too much space.
+  from https://gist.github.com/uupaa/f77d2bcf4dc7a294d109 try:
+    <img src="url" alt="alt text" width="whatever" height="whatever">
+    kramdown only?
+    ![test image size](/img/post-bg-2015.jpg){:class="img-responsive"}
+    ![test image size](/img/post-bg-2015.jpg){:height="50%" width="50%"}
+    ![test image size](/img/post-bg-2015.jpg){:height="700px" width="400px"}
 
-XXX
-      --strict                  Suppress all but legal ECS log lines. By default
-                                non-JSON and non-ecs-logging lines are passed through.
-  -f, --format string           Output format for rendered ECS log records.
-                                Valid formats are: 'default', 'compact', 'ecs', and 'simple'.
-
+XXX dark background image... near top. A combined top one would be nice.
 -->
 
-
-
-# Goals
-
-- Easy to install and use.
-- Fast.
-- Reliably handles any ECS input and doesn't crash.
-- Colors are decent on dark *and* light backgrounds. Many hacker-y tools
-  messy this up.
-
-Nice to haves:
-
-- Configurable/pluggable output formatting would be nice.
-- Filtering support: levels, other fields.
-- `less` integration a la `bunyan`
-- Stats collection and reporting, if there are meaningful common cases
-  here. Otherwise this could get out of hand.
-
-Non-goals:
-
-- An ambitious CLI that handles multiple formats (e.g. also bunyan format, pino
-  format, etc). Leave that for a separate science project.
-- Full less-like curses-based TUI for browsing around in a log file, though
-  that would be fun.
-
-
-# Output formats
+## Output formats
 
 `ecslog` has multiple output formats for rendering ECS logs that may be selected
-via the `-f, --format NAME` option. Note that some formats as *lossy*, i.e.
-elide some fields, typically for compactness.
+via the `-f, --format NAME` option. Some formats are *lossy*, i.e. do not render
+all fields, typically for compactness. Formats labelled as "lossless" have one
+exception: the "ecs.version" field is typically not rendered.
 
-- "default": A lossless default format that renders each log record with a
-  title line to convey core and common fields, followed by all remaining
-  extra fields. Roughly:
+- `default`: A default lossless that format renders each log record with a
+  "title line" -- which includes core and common fields -- followed by all
+  remaining extra fields. Roughly:
 
   ```
   [@timestamp] LOG.LEVEL (log.logger/service.name on host.hostname): message
@@ -133,41 +134,61 @@ elide some fields, typically for compactness.
 
   where "multiline jsonish" means 4-space-indented JSON with the one special
   case that multiline string values are printed indented and with newlines.
-  For example, "error.stack\_trace" in the following:
+  For example, `error.stack_trace` in the following:
 
   ```
   [2021-02-11T06:24:53.251Z]  WARN (myapi on purple.local): something went wrong
-      process: {
-          "pid": 82240
-      }
       error: {
           "type": "Error"
           "message": "boom"
           "stack_trace":
               Error: boom
-                  at .../pino/examples/express-simple.js:67:15
+                  at pino/examples/express-simple.js:67:15
+                  at Layer.handle [as handle_request] (pino/node_modules/express/lib/router/layer.js:95:5)
                   ...
   ```
 
-  The format of the title line may change in future versions.
+  The "key: value" format, for simple values, has the benefit of being usable
+  as-is as a KQL filter with the `-k KQL` option.  The format of the title line
+  may change in future versions.
 
-- "ecs": The native/raw ECS format, ndjson.
-
-- "simple": A *lossy* (i.e. elides some fields for compactness) format that
-  simply renders `LOG.LEVEL: message`. If extra fields (other than the core
-  "@timestamp" and "ecs.version" fields) are being elided, a ellipsis is
-  appended to the line.
-
-- "compact": A lossless format similar to "default", but attempts are made
+- `compact`: A lossless format similar to "default", but attempts are made
   to make the "extraKey" info more compact by balancing multiline JSON with
   80-column output.
 
-- "http": A lossless format similar to "default", but attempts to render
-  HTTP-related ECS fields in HTTP request and response text representation.
-  TODO: not yet implemented.
+- `ecs`: The native/raw ECS format, ndjson.
+
+- `simple`: A *lossy* format that simply renders `LOG.LEVEL: message`. If extra
+  fields (other than the core "@timestamp" and "ecs.version" fields) are being
+  elided, a ellipsis is appended to the line.
 
 
-# Config file
+## `--strict` to filter out non-ecs-logging lines
+
+By default `ecslog` will pass through non-ecs-logging lines unchanged, which is
+useful for mixed-format logs that are typically in the real world -- for example,
+structured logging mixed with debug printfs. However, sometimes it can be
+useful to limit to just ecs-logging lines. Use the `--strict` option for this.
+
+One use case for this is in a pipeline that will process JSON logs, say, with
+`jq`. For example, this will filter an example "apm-server" log file to
+records with the 'event.duration' field (`-k 'event.duration: *'`), exclude
+non-ecs-logging records (`--strict`), format as raw JSON (`-f ecs`) and then
+pipe to `jq` to extract the single JSON field:
+
+```shell
+$ ecslog examples/apm-server.log -k 'event.duration: *' --strict -f ecs | jq '."event.duration"'
+166823
+104904
+76471
+90210
+149853
+10226197680
+...
+```
+
+
+# Configuration
 
 Any of the following `ecslog` options can be set in a `~/.ecslog.toml` file.
 See https://toml.io/ for TOML syntax information.  The `--no-config` option can
@@ -175,7 +196,7 @@ be used to ignore `~/.ecslog.toml`, if there is one.
 
 An example config:
 
-```
+```toml
 format="compact"
 maxLineLen=32768
 ecsLenient=true
@@ -184,9 +205,9 @@ ecsLenient=true
 ### config: format
 
 Set the output format name (a string, equivalent of `-f, --format` option).
-Valid values are: "default" (the default), "compact", "ecs", "simple"
+Valid values are: "default" (the default), "compact", "ecs", "simple".
 
-```
+```toml
 format="default"
 ```
 
@@ -196,7 +217,7 @@ A color mode string for whether output should be colorized.  Valid values are:
 "auto" (the default), "yes", "no". "auto" will colorize if the output stream
 is a TTY.
 
-```
+```toml
 color="auto"
 ```
 
@@ -207,7 +228,7 @@ for processing. Longer lines will be treated as if they are not ecs-logging
 records.  Valid values are: -1 (to use the default 16384), or a value between 1
 and 1048576 (inclusive).
 
-```
+```toml
 maxLineLen=16384
 ```
 
@@ -223,7 +244,7 @@ By default `ecslog` will skip rendering for any log line that does not have
 those three fields. Set `ecsLenient` to true to tell `ecslog` to attempt to
 rendering any log record that has **at least one** of these fields.
 
-```
+```toml
 ecsLenient=false
 ```
 
@@ -233,14 +254,17 @@ If coloring the output (see [config: color](#config-color) above), by default
 `ecslog` will style the change in the timestamp from the preceding log record.
 Set this config var to `false` to turn off this styling.
 
-```
+```toml
 timestampShowDiff=true
 ```
 
 
-# Troubleshooting
+# Bugs
 
-The `ECSLOG_DEBUG` environment variable can be set to get some internal
+If you find a crash or some other issue with `ecslog`, please
+[create an issue](https://github.com/trentm/go-ecslog/issues/new).
+
+The `ECSLOG_DEBUG` environment variable can be set to get some internal limited
 debugging information on stderr. For example:
 
     ECSLOG_DEBUG=1 ecslog ...
