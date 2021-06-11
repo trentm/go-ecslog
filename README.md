@@ -10,20 +10,20 @@ dark-background terminals.
 
 # Install
 
-For homebrew users:
+- For homebrew users:
 
-    brew install trentm/tap/ecslog
-    # OR 'brew upgrade trentm/tap/ecslog' if you have it already
+        brew install trentm/tap/ecslog
+        # OR 'brew upgrade trentm/tap/ecslog' if you have it already
 
-Or download a pre-built binary package from [the releases page](https://github.com/trentm/go-ecslog/releases)
-and copy to somewhere on your PATH.
+- Or download a pre-built binary package from [the releases page](https://github.com/trentm/go-ecslog/releases)
+  and copy to somewhere on your PATH.
 
-Or you can build from source via:
+- Or you can build from source via:
 
-    git clone git@github.com:trentm/go-ecslog.git
-    cd go-ecslog
-    make  # produces "./ecslog", a single binary you can put on your PATH
-    ./ecslog --version
+        git clone git@github.com:trentm/go-ecslog.git
+        cd go-ecslog
+        make  # produces "./ecslog", a single binary you can put on your PATH
+        ./ecslog --version
 
 Then, try it on a demo log file:
 
@@ -32,7 +32,7 @@ Then, try it on a demo log file:
 
 # Introduction
 
-`ecslog` pretty-prints log data in the given file arguments:
+`ecslog` pretty-prints log data in the given file argument(s):
 
     ecslog /var/log/some.log [other-log-files...]
 
@@ -52,7 +52,21 @@ features of ecslog.
 
 Use `-l LEVEL-NAME` to only show log records at that level or above.
 
+XXX
+
 ![ecslog level filtering](./docs/img/level-filtering.png)
+
+50%:
+
+<img src="./docs/img/level-filtering.png" alt="ecslog level filtering" width="50%" height="50%">
+
+80%:
+
+<img src="./docs/img/level-filtering.png" alt="ecslog level filtering" width="80%" height="80%">
+
+850px:
+
+<img src="./docs/img/level-filtering.png" alt="ecslog level filtering" width="850px" height="485px">
 
 ([ECS](https://www.elastic.co/guide/en/ecs/current/ecs-log.html#field-log-level)
 does not mandate level names, so `ecslog` uses [a best-effort ordering](https://github.com/trentm/go-ecslog/blob/v0.4.0/internal/ecslog/ecslog.go#L150-L168)

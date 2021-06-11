@@ -20,7 +20,7 @@
 - [x] don't choke on crazy long lines, i.e. input line handler needs to have maxlen
 - [x] NOTICE.md (some BSD from go in lex.go, some MIT from fatih/color)
 - [ ] less-like pager?
-- [ ] basic intro docs in README
+- [x] basic intro docs in README
 - [x] tests
   - [x] be resilient with type-errors and dotted-name collisions in other fields
     (i.e. don't want to spend time for full schema validation)
