@@ -1,7 +1,5 @@
 # top
 
-- BUG! 'format' from config not working!
-- README needs a once-over
 - title line re-eval, configurability, -t option
   - Note that with no log.level (allowable with ecsLenient, e.g. kibana 8.x
     current logs) the ':' sep in the title line is awkward.
@@ -26,9 +24,6 @@
   - [x] be resilient with type-errors and dotted-name collisions in other fields
     (i.e. don't want to spend time for full schema validation)
 - [x] more robust dotted lookup
-- [ ] bug reporting facility on crash? Not sure we can with golang. Could just
-  be a `--bug` CLI and github issue template with commands to gather and
-  `ESLOG_DEBUG` advice.
 - [ ] handle `XXX` and `TODO` in the code
 
 # docs
