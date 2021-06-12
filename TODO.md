@@ -1,10 +1,10 @@
 # top
 
-- get examples from the other ecs-loggers, esp. zap has some differences
+- BUG! 'format' from config not working!
+- README needs a once-over
 - title line re-eval, configurability, -t option
   - Note that with no log.level (allowable with ecsLenient, e.g. kibana 8.x
     current logs) the ':' sep in the title line is awkward.
-- README needs a once-over
 - review TODOs in the code
 - clear out all panic()s and probably lo?g.Fatal()s? Perhaps remove from 'lg' pkg
 
@@ -21,7 +21,7 @@
 - [x] don't choke on crazy long lines, i.e. input line handler needs to have maxlen
 - [x] NOTICE.md (some BSD from go in lex.go, some MIT from fatih/color)
 - [ ] less-like pager?
-- [ ] basic intro docs in README
+- [x] basic intro docs in README
 - [x] tests
   - [x] be resilient with type-errors and dotted-name collisions in other fields
     (i.e. don't want to spend time for full schema validation)
@@ -53,6 +53,7 @@
   Supports truecolor and degradation. Supports templates which might be
   useful for config-based custom styling.
 - "http" output format -> fieldRenderers?
+- highlighting hits from KQL filtering would be really nice
 - coloring for added zap and other levels (test case for this)
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with
