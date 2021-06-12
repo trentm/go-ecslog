@@ -6,7 +6,7 @@ format. It is a single (Go-implemented) binary, with builds for Linux, Mac, and
 Windows. Its default styling should play nice with both light and
 dark-background terminals.
 
-![ecslog demo screenshot](./docs/img/intro-demo.png)
+![ecslog demo screenshot](./docs/img/demo-light-and-dark.png)
 
 # Install
 
@@ -52,24 +52,7 @@ features of ecslog.
 
 Use `-l LEVEL-NAME` to only show log records at that level or above.
 
-XXX
-
 ![ecslog level filtering](./docs/img/level-filtering.png)
-
-w100
-![ecslog level filtering](./docs/img/level-filtering-w100.png)
-
-50%:
-
-<img src="./docs/img/level-filtering.png" alt="ecslog level filtering" width="50%" height="50%">
-
-80%:
-
-<img src="./docs/img/level-filtering.png" alt="ecslog level filtering" width="80%" height="80%">
-
-850px:
-
-<img src="./docs/img/level-filtering.png" alt="ecslog level filtering" width="850px" height="485px">
 
 ([ECS](https://www.elastic.co/guide/en/ecs/current/ecs-log.html#field-log-level)
 does not mandate level names, so `ecslog` uses [a best-effort ordering](https://github.com/trentm/go-ecslog/blob/v0.4.0/internal/ecslog/ecslog.go#L150-L168)
@@ -80,7 +63,7 @@ of level names in common usage.)
 
 Use `-k KQL` to filter log records using [KQL](https://www.elastic.co/guide/en/kibana/current/kuery-query.html), as you would in Kibana.
 
-![ecslog KQL filtering](./docs/img/kql-filtering-1.png)
+![ecslog KQL filtering](./docs/img/kql-filtering.png)
 
 Some examples:
 
@@ -105,7 +88,7 @@ By default, `ecslog` will highlight the change in a log record's `@timestamp`
 from the previous log record. With the "default" formatter, the changed part
 of the timestamp is underlined. For example:
 
-![screenshot of @timestamp diff highlighting](./docs/img/timestamp-diff-highlighting.png)
+![ecslog @timestamp diff highlighting](./docs/img/timestamp-diff-highlighting.png)
 
 This can be turned off with the [`timestampShowDiff=false` config var](#config-timestampshowdiff).
 
@@ -119,18 +102,6 @@ migrating, are *almost* conformant. Add `ecsLenient=true` to `~/.ecslog.toml` to
 only require that log lines have *one* of these fields to be considered an
 ecs-logging record.
 
-<!--
-XXX images are too big: scale? or make wider
-  XXX drop the drop shadow? Takes up too much space.
-  from https://gist.github.com/uupaa/f77d2bcf4dc7a294d109 try:
-    <img src="url" alt="alt text" width="whatever" height="whatever">
-    kramdown only?
-    ![test image size](/img/post-bg-2015.jpg){:class="img-responsive"}
-    ![test image size](/img/post-bg-2015.jpg){:height="50%" width="50%"}
-    ![test image size](/img/post-bg-2015.jpg){:height="700px" width="400px"}
-
-XXX dark background image... near top. A combined top one would be nice.
--->
 
 ## Output formats
 

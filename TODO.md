@@ -1,5 +1,6 @@
 # top
 
+- BUG! 'format' from config not working!
 - README needs a once-over
 - title line re-eval, configurability, -t option
   - Note that with no log.level (allowable with ecsLenient, e.g. kibana 8.x

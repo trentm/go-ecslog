@@ -1,4 +1,4 @@
-{"log.level":"debug","@timestamp":"2021-04-15T04:21:16.049Z","ecs":{"version":"1.5.0"},"message":"server started"}
+{"log.level":"debug","@timestamp":"2021-04-15T04:20:16.049Z","ecs":{"version":"1.5.0"},"message":"server started"}
 {"log.level":"debug","@timestamp":"2021-04-15T04:22:30.507Z","ecs":{"version":"1.5.0"},"message":"minutes later"}
 {"log.level":"debug","@timestamp":"2021-04-15T04:22:32.742Z","ecs":{"version":"1.5.0"},"message":"a few seconds later"}
 {"log.level":"debug","@timestamp":"2021-04-15T04:22:33.170Z","ecs":{"version":"1.5.0"},"message":"in the next second"}

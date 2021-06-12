@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix an bug where `format="..."` from the config file was not being read.
+
 - Add "DEPRECATION" level (with same sort order as WARN) found in elasticsearch
   8.x logs.
 

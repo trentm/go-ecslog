@@ -129,12 +129,11 @@ func main() {
 	}
 
 	formatName := "default"
+	if cfgFormat, ok := cfg.GetString("format"); ok {
+		formatName = cfgFormat
+	}
 	if *flagFormatName != "" {
 		formatName = *flagFormatName
-	} else if len(formatName) == 0 {
-		if cfgFormat, ok := cfg.GetString("format"); ok {
-			formatName = cfgFormat
-		}
 	}
 
 	maxLineLen := -1
