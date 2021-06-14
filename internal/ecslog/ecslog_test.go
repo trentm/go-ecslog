@@ -82,26 +82,27 @@ var renderFileTestCases = []renderFileTestCase{
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi"}`,
 		"",
 	},
+	// Include fields
 	{
-		"only log",
+		"include fields: only log",
 		"no", "", "default", "", "", []string{"log"},
-		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi","log.origin":{"foo":"bar",file.name":"main.go","file.line":"42"}}`,
-		"{\"log.level\":\"info\",\"@timestamp\":\"2021-01-19T22:51:12.142Z\",\"ecs\":{\"version\":\"1.5.0\"},\"message\":\"hi\",\"log.origin\":{\"foo\":\"bar\",file.name\":\"main.go\",\"file.line\":\"42\"}}\n",
+		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi","log.origin":{"foo":"bar","file.name":"main.go","file.line":"42"}}`,
+		"[2021-01-19T22:51:12.142Z]  INFO: hi\n    log.origin: {\n        \"foo\": \"bar\",\n        \"file.name\": \"main.go\",\n        \"file.line\": \"42\"\n    }\n",
 	},
 	{
-		"only log.origin.file",
+		"include fields: only log.origin.file",
 		"no", "", "default", "", "", []string{"log.origin.file"},
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi","log.origin":{"foo":"bar","file.name":"main.go","file.line":"42"}}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n    log.origin: {\n        \"file.name\": \"main.go\",\n        \"file.line\": \"42\"\n    }\n",
 	},
 	{
-		"only log.origin.file.name",
+		"include fields: only log.origin.file.name",
 		"no", "", "default", "", "", []string{"log.origin.file.name"},
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi","log.origin":{"foo":"bar","file.name":"main.go","file.line":"42"}}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n    log.origin: {\n        \"file.name\": \"main.go\"\n    }\n",
 	},
 	{
-		"only foo",
+		"include fields: only foo",
 		"no", "", "default", "", "", []string{"foo"},
 		`{"log.level":"info","@timestamp":"2021-01-19T22:51:12.142Z","ecs":{"version":"1.5.0"},"message":"hi","foo":0,"bar":1}`,
 		"[2021-01-19T22:51:12.142Z]  INFO: hi\n    foo: 0\n",

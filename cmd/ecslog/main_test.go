@@ -100,7 +100,7 @@ var mainTestCases = []mainTestCase{
 		"ecslog --include-fields ...all the title fields...",
 		[]string{"ecslog", "-i", "foo", "./testdata/exclude-fields.log"},
 		0,
-		regexp.MustCompile(`^\[2021-01-19T22:51:12.142Z\]  INFO: hi\n    foo: "bar"\n    spam: \n$`),
+		regexp.MustCompile(`^\[2021-01-19T22:51:12.142Z\]  INFO: hi\n    foo: "bar"\n$`),
 		nil,
 	},
 }
