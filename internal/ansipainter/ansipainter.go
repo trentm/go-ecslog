@@ -86,8 +86,6 @@ const sgrReset = escape + "[0m" // Reset == 0
 
 // ANSIPainter handles writing ANSI coloring escape codes to a strings.Builder.
 // It is a mapping of rendered-log "role" to ANSI escape attribute code.
-//
-// TODO: can 'role' be an enum?
 type ANSIPainter struct {
 	// Mapping log record rendering role to ANSI Select Graphic Rendition (SGR).
 	// https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
@@ -167,7 +165,7 @@ var BunyanPainter = New(map[string][]Attribute{
 var PinoPrettyPainter = New(map[string][]Attribute{
 	"message": {FgCyan},
 	"trace":   {FgHiBlack}, // FgHiBlack is chalk's conversion of "grey".
-	"debug":   {FgBlue},    // TODO: is this blue visible on cmd.exe defaults?
+	"debug":   {FgBlue},
 	"info":    {FgGreen},
 	"warn":    {FgYellow},
 	"error":   {FgRed},

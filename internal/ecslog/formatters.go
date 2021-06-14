@@ -250,14 +250,8 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 	//
 	//    [@timestamp] LOG.LEVEL (log.logger/service.name on host.hostname): message
 	//
-	// - TODO: re-work this title line pattern, the parens section is weak
-	//   - bunyan will always have $log.logger
-	//   - bunyan and pino will typically have $process.pid
-	//   - What about other languages?
-	//   - $service.name will typically only be there with automatic injection
-	//   typical bunyan:  [@timestamp] LEVEL (name/pid on host): message
-	//   typical pino:    [@timestamp] LEVEL (pid on host): message
-	//   typical winston: [@timestamp] LEVEL: message
+	// Note: See https://github.com/trentm/go-ecslog/issues/24 for likely
+	// re-work of the default title line.
 	formatTimestamp(r, rec, b)
 	if r.logLevel != "" {
 		r.painter.Paint(b, strings.ToLower(r.logLevel))

@@ -1,9 +1,9 @@
 # top
 
-- title line re-eval, configurability, -t option
+- title line re-eval (https://github.com/trentm/go-ecslog/issues/24),
+  configurability, -t option
   - Note that with no log.level (allowable with ecsLenient, e.g. kibana 8.x
     current logs) the ':' sep in the title line is awkward.
-- review TODOs in the code
 
 # mvp
 
@@ -23,7 +23,7 @@
   - [x] be resilient with type-errors and dotted-name collisions in other fields
     (i.e. don't want to spend time for full schema validation)
 - [x] more robust dotted lookup
-- [ ] handle `XXX` and `TODO` in the code
+- [x] handle `TODO`s in the code
 
 # docs
 
@@ -67,7 +67,6 @@
 - perhaps use https://github.com/elastic/makelogs for testing input?
   I don't know if this is ECS-y at all. Guessing only sort of. Useful
   for fuzzing-ish?
-- benchmarking to be able to test out "TODO perf" ideas
 - godoc and examples (https://blog.golang.org/examples)
 
 

@@ -125,14 +125,14 @@ func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int,
 	}, nil
 }
 
-// SetLevelFilter ... TODO:doc
+// SetLevelFilter sets the level at which `log.level` filtering is done.
 func (r *Renderer) SetLevelFilter(level string) {
 	if level != "" {
 		r.levelFilter = level
 	}
 }
 
-// SetKQLFilter ... TODO:doc
+// SetKQLFilter sets the KQL statement used for log record filtering.
 func (r *Renderer) SetKQLFilter(kql string) error {
 	var err error
 	if kql != "" {
@@ -301,7 +301,6 @@ func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 		if err == io.EOF {
 			return nil
 		} else if err != nil {
-			// TODO: Add context to this err? What kind of err can we get here?
 			return err
 		}
 		if wasPrefix || isPrefix {

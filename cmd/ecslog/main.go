@@ -173,7 +173,6 @@ func main() {
 	err = r.SetKQLFilter(*flagKQL)
 	if err != nil {
 		printError("invalid KQL: " + err.Error())
-		// TODO: --help-kql option, then refer to it here
 		os.Exit(1)
 	}
 	r.SetStrictFilter(*flagStrict)
