@@ -1,14 +1,10 @@
 package ansipainter
 
-// TODO: Consider True Color support? See https://gist.github.com/XVilka/8346728
-// and https://github.com/chalk/chalk and https://github.com/gookit/color
-
 // Suggested colors (some are unreadable in common cases):
 // - Good: cyan, yellow (limited use), bold, green, magenta, red
 // - Bad: blue (not visible on cmd.exe), grey (same color as background on
 //   Solarized Dark theme from <https://github.com/altercation/solarized>, see
 //   issue #160
-// TODO: is blue not being visible on cmd.exe (or whatever common Window shell) still true?
 
 import (
 	"strconv"
