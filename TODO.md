@@ -25,50 +25,16 @@
 - [x] more robust dotted lookup
 - [x] handle `TODO`s in the code
 
-# docs
-
-- specify that multifile behaviour may change later to merge on @timestamp
-  (https://github.com/trentm/go-ecslog/issues/16)
-
 # later
 
 - learn about verifiable builds: https://goreleaser.com/customization/gomod/
-- Clickable file+linenum. If the ECS log record includes file name and line
-  fields (https://www.elastic.co/guide/en/ecs/current/ecs-log.html#field-log-origin-file-line)
-  the it would be nice if the default rendering of that (perhaps in the title line?)
-  made it feasible to have that a clickable link in terminals.
-    - With iTerm2 one could use "Semantic History" (e.g. see
-      https://coderwall.com/p/5hp1yg/iterm2-cmd-click-to-open-file-in-vim-in-terminal)
-      to configure this to open in a local editor or perhaps a GH link to that
-      line number. What about ecslog (or another project) providing a small
-      command to do that mapping (of log.origin.file.{name,line}) to local
-      paths and/or GH links? Then provide docs on setting that up.
-- consider https://github.com/muesli/termenv for ANSI color handling.
-  Supports truecolor and degradation. Supports templates which might be
-  useful for config-based custom styling.
 - "http" output format -> fieldRenderers?
 - highlighting hits from KQL filtering would be really nice
-- coloring for added zap and other levels (test case for this)
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with
 - option to highlight a matching string? or leave that to the pager? Could
   pass it on to the pager. Could be a vi-like "+<num>" or "+/query".
-- src fields: log.origin.file.\* (note that ecs-logging zap logger emits
-  `"log.origin"."file.name"`, which adds a surprise)
-    - also colorizing these
-- distribute builds? GH releases?
-- filtering:
-    - KQL (https://www.elastic.co/guide/en/kibana/master/kuery-query.html) or
-      EQL (https://www.elastic.co/guide/en/elasticsearch/reference/current/eql.html)?
-      Let's try KQL.
-      Is that what you use by default in the Kibana Logs App?
-- bunyan style handling of multiple input files and chrono ordering
-  of records
-- perhaps use https://github.com/elastic/makelogs for testing input?
-  I don't know if this is ECS-y at all. Guessing only sort of. Useful
-  for fuzzing-ish?
 - godoc and examples (https://blog.golang.org/examples)
-
 
 # musing on custom formats/profiles
 
