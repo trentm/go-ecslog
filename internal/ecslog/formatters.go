@@ -469,9 +469,8 @@ func anyIsPrefix(includes []string, key string) ([]string, bool) {
 			if len(includeSubKeys) > len(subKeys) {
 				// we didn't match the whole key, return the reminder to match in the next recursion step
 				return []string{strings.Join(includeSubKeys[len(subKeys):], ".")}, true
-			} else {
-				return []string{}, true
 			}
+			return []string{}, true
 		}
 	}
 	return includes, false
