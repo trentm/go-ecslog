@@ -102,6 +102,12 @@ migrating, are *almost* conformant. Add `ecsLenient=true` to `~/.ecslog.toml` to
 only require that log lines have *one* of these fields to be considered an
 ecs-logging record.
 
+<!--
+- elasticsearch: https://github.com/elastic/elasticsearch/issues/73256
+- kibana: Missing log.level (because hapi "tags"). I haven't opened an issue.
+- apm-server: https://github.com/elastic/beats/issues/25922
+-->
+
 
 ## Output formats
 
