@@ -1,0 +1,14 @@
+ecslog
+Copyright 2021 Trent Mick
+Copyright 2021 Elasticsearch B.V.
+
+This project is licensed under the Apache License version 2.0. However, there
+are some sections of the code based-on or from other projects as follows:
+
+- The structure of "internal/kqlog/lex.go" is based on
+  https://golang.org/src/text/template/parse/lex.go, which itself is licensed
+  under a BSD-style license (https://golang.org/LICENSE).
+
+- A section of "internal/ansipainter/ansipainter.go" is imported from
+  https://github.com/fatih/color, which is licensed under the MIT license
+  (https://github.com/fatih/color/blob/master/LICENSE.md).

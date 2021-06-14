@@ -1,12 +1,9 @@
 # top
 
-- get examples from the other ecs-loggers, esp. zap has some differences
-- title line re-eval, configurability, -t option
-- README needs a once-over
-- review TODOs in the code
-- clear out all panic()s and probably lo?g.Fatal()s? Perhaps remove from 'lg' pkg
-- releases: because unsigned dev thing on Mac, it would be nice to get into
-  brew. Look at goreleaser again
+- title line re-eval (https://github.com/trentm/go-ecslog/issues/24),
+  configurability, -t option
+  - Note that with no log.level (allowable with ecsLenient, e.g. kibana 8.x
+    current logs) the ':' sep in the title line is awkward.
 
 # mvp
 
@@ -19,51 +16,24 @@
 - [x] format/renderer support, minimal set of formats
 - [x] basic config file support (TOML)
 - [x] don't choke on crazy long lines, i.e. input line handler needs to have maxlen
-- [ ] NOTICE.md (some BSD from go in lex.go, some MIT from fatih/color)
+- [x] NOTICE.md (some BSD from go in lex.go, some MIT from fatih/color)
 - [ ] less-like pager?
-- [ ] basic intro docs in README
-- [ ] tests
+- [x] basic intro docs in README
+- [x] tests
   - [x] be resilient with type-errors and dotted-name collisions in other fields
     (i.e. don't want to spend time for full schema validation)
-  - [ ] examples from all the ecs-logging libs
 - [x] more robust dotted lookup
-- [ ] bug reporting facility on crash? Not sure we can with golang. Could just
-  be a `--bug` CLI and github issue template with commands to gather and
-  `ESLOG_DEBUG` advice.
-- [ ] handle `XXX` and `TODO` in the code
-
-# docs
-
-- specify that multifile behaviour may change later to merge on @timestamp
+- [x] handle `TODO`s in the code
 
 # later
 
 - learn about verifiable builds: https://goreleaser.com/customization/gomod/
-- Is there a way to do releases for macOS and not have users hit the
-  "Developer cannot be verified" error?
-  https://stackoverflow.com/questions/59890359/developer-cannot-be-verified-macos-error-exception-a-move-to-trash-b-cancel
-  Tarball? Zip? Installer? Verifying with mac somehow (ew)? Brew tap?
 - "http" output format -> fieldRenderers?
-- coloring for added zap and other levels (test case for this)
+- highlighting hits from KQL filtering would be really nice
 - get ECS log examples from all the ecs-logging-$lang examples to learn from
   and test with
 - option to highlight a matching string? or leave that to the pager? Could
   pass it on to the pager. Could be a vi-like "+<num>" or "+/query".
-- src fields: log.origin.file.\* (note that ecs-logging zap logger emits
-  `"log.origin"."file.name"`, which adds a surprise)
-    - also colorizing these
-- distribute builds? GH releases?
-- filtering:
-    - KQL (https://www.elastic.co/guide/en/kibana/master/kuery-query.html) or
-      EQL (https://www.elastic.co/guide/en/elasticsearch/reference/current/eql.html)?
-      Let's try KQL.
-      Is that what you use by default in the Kibana Logs App?
-- bunyan style handling of multiple input files and chrono ordering
-  of records
-- perhaps use https://github.com/elastic/makelogs for testing input?
-  I don't know if this is ECS-y at all. Guessing only sort of. Useful
-  for fuzzing-ish?
-- benchmarking to be able to test out "TODO perf" ideas
 - godoc and examples (https://blog.golang.org/examples)
 
 # musing on custom formats/profiles
@@ -98,7 +68,7 @@ a format now. *Or* could still be "format", but the default built-in formats
 
     ecslog -f trent
 
-If doing this (a format include the other attributes), then need to *not*
+If doing this (a format includes the other attributes), then need to *not*
 allow top-level attributes in config, i.e. NOT this
 
     # NOT this

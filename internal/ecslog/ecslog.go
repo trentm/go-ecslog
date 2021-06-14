@@ -19,25 +19,29 @@ import (
 )
 
 // Version is the semver version of this tool.
-const Version = "v0.3.0"
+const Version = "v0.4.0"
 
 const defaultMaxLineLen = 16384
 
 // Renderer is the class used to drive ECS log rendering (aka pretty printing).
 type Renderer struct {
-	parser        fastjson.Parser
-	painter       *ansipainter.ANSIPainter
-	formatName    string
-	formatter     Formatter
-	maxLineLen    int
-	excludeFields []string
-	includeFields []string
-	levelFilter   string
-	kqlFilter     *kqlog.Filter
-	strict        bool
+	parser            fastjson.Parser
+	painter           *ansipainter.ANSIPainter
+	formatName        string
+	formatter         Formatter
+	maxLineLen        int
+	excludeFields     []string
+	includeFields     []string
+	ecsLenient        bool
+	timestampShowDiff bool
+	levelFilter       string
+	kqlFilter         *kqlog.Filter
+	strict            bool
 
-	line     []byte // the raw input line
-	logLevel string // cached "log.level", read during isECSLoggingRecord
+	line             []byte // the raw input line
+	logLevel         string // cached "log.level", read during isECSLoggingRecord
+	lastTimestampBuf []byte // buffer to hold lastTimestamp values
+	lastTimestamp    []byte // last @timestamp (a slice of lastTimestampBuf)
 }
 
 // NewRenderer returns a new ECS logging log renderer.
@@ -49,7 +53,14 @@ type Renderer struct {
 // - `maxLineLen` a maximum number of bytes for a line that will be considered
 //   for log record processing. It must be a positive number between 1 and
 //   1048576 (2^20), or -1 to use the default value (16384).
-func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields, includeFields []string) (*Renderer, error) {
+// - `ecsLenient` is a bool indicating if rendering should be lenient in
+//   validating if a JSON line is an ecs-logging record. Strictly (the default)
+//   to be an ecs-logging record it must have ecs.version, log.level, and
+//   @timestamp. If this option is true, it will only require *one* of those
+//   fields to exist.
+// - `timestampShowDiff` is a bool indicating if the @timestamp diff from the
+//   preceding log record should be styled.
+func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields, includeFields []string, ecsLenient, timestampShowDiff bool) (*Renderer, error) {
 	// Get appropriate "painter" for terminal coloring.
 	var painter *ansipainter.ANSIPainter
 	if shouldColorize == "auto" {
@@ -74,6 +85,8 @@ func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int,
 		}
 	case "no":
 		painter = ansipainter.NoColorPainter
+		// No point in calculating timestamp diff if not styling.
+		timestampShowDiff = false
 	default:
 		return nil, fmt.Errorf("invalid value for shouldColorize: %s", shouldColorize)
 	}
@@ -99,23 +112,29 @@ func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int,
 	lg.Printf("create renderer: formatName=%q, shouldColorize=%q, colorScheme=%q, maxLineLen=%d\n",
 		formatName, shouldColorize, colorScheme, maxLineLen)
 	return &Renderer{
-		painter:       painter,
-		formatName:    formatName,
-		formatter:     formatter,
-		maxLineLen:    maxLineLen,
-		excludeFields: excludeFields,
-		includeFields: includeFields,
+		painter:           painter,
+		formatName:        formatName,
+		formatter:         formatter,
+		maxLineLen:        maxLineLen,
+		excludeFields:     excludeFields,
+		includeFields:     includeFields,
+		ecsLenient:        ecsLenient,
+		timestampShowDiff: timestampShowDiff,
+
+		// Can a timestamp ever reasonably be longer than 64 chars?
+		// "2021-04-15T04:22:29.507Z" is 24.
+		lastTimestampBuf: make([]byte, 64),
 	}, nil
 }
 
-// SetLevelFilter ... TODO:doc
+// SetLevelFilter sets the level at which `log.level` filtering is done.
 func (r *Renderer) SetLevelFilter(level string) {
 	if level != "" {
 		r.levelFilter = level
 	}
 }
 
-// SetKQLFilter ... TODO:doc
+// SetKQLFilter sets the KQL statement used for log record filtering.
 func (r *Renderer) SetKQLFilter(kql string) error {
 	var err error
 	if kql != "" {
@@ -137,17 +156,19 @@ func (r *Renderer) SetStrictFilter(strict bool) {
 //
 // - zap: https://pkg.go.dev/go.uber.org/zap/#AtomicLevel.MarshalText
 // - bunyan: https://github.com/trentm/node-bunyan/tree/master/#levels
+// - elasticsearch emits "DEPRECATION" as a level; we equate that with WARN
 // - ...
 var levelValFromName = map[string]int{
-	"trace":   10,
-	"debug":   20,
-	"info":    30,
-	"warn":    40,
-	"warning": 40,
-	"error":   50,
-	"dpanic":  60,
-	"panic":   70,
-	"fatal":   80,
+	"trace":       10,
+	"debug":       20,
+	"info":        30,
+	"deprecation": 40,
+	"warn":        40,
+	"warning":     40,
+	"error":       50,
+	"dpanic":      60,
+	"panic":       70,
+	"fatal":       80,
 }
 
 // LogLevelLess returns true iff level1 is less than level2.
@@ -169,33 +190,82 @@ func LogLevelLess(level1, level2 string) bool {
 	return val1 < val2
 }
 
+// LevelNameOrderStr returns a string with all the known level names in order
+// in the format "trace < debug < ...".
+func LevelNameOrderStr() string {
+	type nv struct {
+		name string
+		val  int
+	}
+
+	var sorted []nv
+	for n, v := range levelValFromName {
+		sorted = append(sorted, nv{n, v})
+	}
+
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return sorted[i].val < sorted[j].val
+	})
+
+	var names []string
+	var currVal int
+	for _, nv := range sorted {
+		if nv.val == currVal && len(names) > 0 {
+			names[len(names)-1] = names[len(names)-1] + "/" + nv.name
+		} else {
+			names = append(names, nv.name)
+			currVal = nv.val
+		}
+	}
+	return strings.Join(names, " < ")
+}
+
 // isECSLoggingRecord returns true iff the given `rec` has the required
 // ecs-logging fields: @timestamp, ecs.version, and log.level (all
 // strings). If `message` is present, it must be a string.
 //
+// Caveat: If `r.ecsLenient` then only one of the three "required" fields is
+// needed to be considered an "ecs-logging" record.
+//
 // Side-effect: r.logLevel is cached on the Renderer for subsequent use.
 func (r *Renderer) isECSLoggingRecord(rec *fastjson.Value) bool {
+	logLevel := jsonutils.LookupValue(rec, "log", "level")
+	if logLevel != nil && logLevel.Type() == fastjson.TypeString {
+		r.logLevel = string(logLevel.GetStringBytes())
+		if r.ecsLenient {
+			return true
+		}
+	} else if !r.ecsLenient {
+		return false
+	}
+
 	timestamp := rec.GetStringBytes("@timestamp")
-	if timestamp == nil {
+	if timestamp != nil {
+		if r.ecsLenient {
+			return true
+		}
+	} else if !r.ecsLenient {
+		return false
+	}
+
+	ecsVersion := jsonutils.LookupValue(rec, "ecs", "version")
+	if ecsVersion != nil && ecsVersion.Type() == fastjson.TypeString {
+		if r.ecsLenient {
+			return true
+		}
+	} else if !r.ecsLenient {
 		return false
 	}
 
 	message := rec.Get("message")
 	if message != nil && message.Type() != fastjson.TypeString {
+		// If there is a "message" it must be a string.
 		return false
 	}
 
-	ecsVersion := jsonutils.LookupValue(rec, "ecs", "version")
-	if ecsVersion == nil || ecsVersion.Type() != fastjson.TypeString {
+	if r.ecsLenient {
 		return false
 	}
-
-	logLevel := jsonutils.LookupValue(rec, "log", "level")
-	if logLevel == nil || logLevel.Type() != fastjson.TypeString {
-		return false
-	}
-	r.logLevel = string(logLevel.GetStringBytes())
-
 	return true
 }
 
@@ -233,7 +303,6 @@ func (r *Renderer) RenderFile(in io.Reader, out io.Writer) error {
 		if err == io.EOF {
 			return nil
 		} else if err != nil {
-			// TODO: Add context to this err? What kind of err can we get here?
 			return err
 		}
 		if wasPrefix || isPrefix {

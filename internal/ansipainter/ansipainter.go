@@ -1,14 +1,10 @@
 package ansipainter
 
-// TODO: Consider True Color support? See https://gist.github.com/XVilka/8346728
-// and https://github.com/chalk/chalk and https://github.com/gookit/color
-
 // Suggested colors (some are unreadable in common cases):
 // - Good: cyan, yellow (limited use), bold, green, magenta, red
 // - Bad: blue (not visible on cmd.exe), grey (same color as background on
 //   Solarized Dark theme from <https://github.com/altercation/solarized>, see
 //   issue #160
-// TODO: is blue not being visible on cmd.exe (or whatever common Window shell) still true?
 
 import (
 	"strconv"
@@ -90,8 +86,6 @@ const sgrReset = escape + "[0m" // Reset == 0
 
 // ANSIPainter handles writing ANSI coloring escape codes to a strings.Builder.
 // It is a mapping of rendered-log "role" to ANSI escape attribute code.
-//
-// TODO: can 'role' be an enum?
 type ANSIPainter struct {
 	// Mapping log record rendering role to ANSI Select Graphic Rendition (SGR).
 	// https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
@@ -100,7 +94,8 @@ type ANSIPainter struct {
 	painting    bool
 }
 
-// Paint ... TODO:doc
+// Paint will write the ANSI code to start styling with the ANSI SGR configured
+// for the given `role`.
 func (p *ANSIPainter) Paint(b *strings.Builder, role string) {
 	sgr, ok := p.sgrFromRole[role]
 	if ok {
@@ -111,11 +106,18 @@ func (p *ANSIPainter) Paint(b *strings.Builder, role string) {
 	}
 }
 
-// Reset ... TODO:doc
+// PaintAttrs will write the ANSI code to start styling with the given
+// attributes.
+func (p *ANSIPainter) PaintAttrs(b *strings.Builder, attrs []Attribute) {
+	b.WriteString(sgrFromAttrs(attrs))
+	p.painting = true
+}
+
+// Reset will write the ANSI SGR to reset styling, if necessary.
 func (p *ANSIPainter) Reset(b *strings.Builder) {
-	// TODO: skip this if there wasn't a code given to previous Paint -> p.painting
 	if p.painting {
 		b.WriteString(sgrReset)
+		p.painting = false
 	}
 }
 
@@ -125,17 +127,24 @@ func New(attrsFromRole map[string][]Attribute) *ANSIPainter {
 	p := ANSIPainter{}
 	p.sgrFromRole = make(map[string]string)
 	for role, attrs := range attrsFromRole {
-		sgr := escape + "["
-		for i, attr := range attrs {
-			if i > 0 {
-				sgr += ";"
-			}
-			sgr += strconv.Itoa(int(attr))
+		if len(attrs) > 0 {
+			p.sgrFromRole[role] = sgrFromAttrs(attrs)
 		}
-		sgr += "m"
-		p.sgrFromRole[role] = sgr
 	}
 	return &p
+}
+
+// sgrFromAttrs returns the ANSI escape code (SGR) for an array of attributes.
+func sgrFromAttrs(attrs []Attribute) string {
+	sgr := escape + "["
+	for i, attr := range attrs {
+		if i > 0 {
+			sgr += ";"
+		}
+		sgr += strconv.Itoa(int(attr))
+	}
+	sgr += "m"
+	return sgr
 }
 
 // NoColorPainter is a painter that emits no ANSI codes.
@@ -156,7 +165,7 @@ var BunyanPainter = New(map[string][]Attribute{
 var PinoPrettyPainter = New(map[string][]Attribute{
 	"message": {FgCyan},
 	"trace":   {FgHiBlack}, // FgHiBlack is chalk's conversion of "grey".
-	"debug":   {FgBlue},    // TODO: is this blue visible on cmd.exe?
+	"debug":   {FgBlue},
 	"info":    {FgGreen},
 	"warn":    {FgYellow},
 	"error":   {FgRed},
@@ -164,9 +173,15 @@ var PinoPrettyPainter = New(map[string][]Attribute{
 })
 
 // DefaultPainter implements the stock default color scheme for `ecslog`.
-// TODO: test on windows
-// TODO: could add styles for punctuation (jq bolds them, I'd tend to make them faint)
+//
+// On timestamp styling: I wanted this to be somewhat subtle but not too subtle
+// to be able to read. I like timestampDiff=Underline or timestampSame=Faint,
+// but not both together. Anything else was too subtle (Italic) or too
+// distracting (fg or bg colors). Perhaps with True Color this could be better.
 var DefaultPainter = New(map[string][]Attribute{
+	"timestamp":     {},
+	"timestampSame": {},
+	"timestampDiff": {Underline},
 	"message":       {FgCyan},
 	"extraField":    {Bold},
 	"jsonObjectKey": {FgHiBlue},
@@ -176,12 +191,17 @@ var DefaultPainter = New(map[string][]Attribute{
 	"jsonFalse":     {Italic, FgRed},
 	"jsonNull":      {Italic, Bold, FgBlack},
 	"ellipsis":      {Faint},
-	"trace":         {FgHiBlack},
-	"debug":         {FgHiBlue},
-	"info":          {FgGreen},
-	"warn":          {FgYellow},
-	"error":         {FgRed},
-	"fatal":         {BgRed},
+	// log.level names (see ecslog.go#levelValFromName for known names)
+	"trace":       {FgHiBlack},
+	"debug":       {FgHiBlue},
+	"info":        {FgGreen},
+	"deprecation": {FgYellow},
+	"warn":        {FgYellow},
+	"warning":     {FgYellow},
+	"error":       {FgRed},
+	"dpanic":      {FgRed},
+	"panic":       {FgRed},
+	"fatal":       {BgRed},
 })
 
 // PainterFromName maps known painter name to an ANSIPainter.

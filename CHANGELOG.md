@@ -1,5 +1,32 @@
 # ecslog changelog
 
+## Unreleased
+
+- Fix a bug where `format="..."` from the config file was not being read.
+
+- Add "DEPRECATION" level (with same sort order as WARN) found in elasticsearch
+  8.x logs.
+
+- Fix an issue where coloring did not handle uppercase level names.
+
+## v0.4.0
+
+- Add [`@timestamp` diff highlighting](README.md#timestamp-diff-highlighting):
+  the part of the timestamp that has changed from the preceding record is
+  underlined (in the default color scheme). This highlighting can be turned
+  off with the `timestampShowDiff: false` config var.
+  ([#20](https://github.com/trentm/go-ecslog/pull/20))
+
+- Add `ecsLenient: false` config option to allow rendering of lines that are
+  likely ECS-compatible, but do not have all three required ecs-logging fields:
+  `@timestamp`, `ecs.version`, `log.level`. Only one of those three is required
+  to be rendered.
+
+  This intentially doesn't have a command-line option for now.  Currently it is
+  considered a crutch for ES 8.x and Kibana 8.x logs that, at time of writing,
+  are missing one or two of the above fields. If that is long-standing,
+  `ecsLenient: true` might eventually become the default.
+
 ## v0.3.0
 
 - Use goreleaser for releases. The "Version" generally includes the leading "v"

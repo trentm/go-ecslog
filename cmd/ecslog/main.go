@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/mitchellh/go-wordwrap"
 	"github.com/spf13/pflag"
 
 	"github.com/trentm/go-ecslog/internal/ecslog"
@@ -25,8 +26,8 @@ var flagNoConfig = flags.Bool("no-config", false, "Ignore a '~/.ecslog.toml' con
 // Filtering options.
 var flagLevel = flags.StringP("level", "l", "",
 	`Filter out log records below the given level.
-This supports level names and ordering from common
-logging frameworks.`)
+Known levels, in order, are:
+`+wordwrap.WrapString(ecslog.LevelNameOrderStr(), 50))
 var flagKQL = flags.StringP("kql", "k", "",
 	`Filter log records with the given KQL query.
 E.g.: 'url.path:/foo and request.method:post'
@@ -131,12 +132,11 @@ func main() {
 	}
 
 	formatName := "default"
+	if cfgFormat, ok := cfg.GetString("format"); ok {
+		formatName = cfgFormat
+	}
 	if *flagFormatName != "" {
 		formatName = *flagFormatName
-	} else if len(formatName) == 0 {
-		if cfgFormat, ok := cfg.GetString("format"); ok {
-			formatName = cfgFormat
-		}
 	}
 
 	maxLineLen := -1
@@ -148,6 +148,16 @@ func main() {
 	excludeFields := commaSplitter.Split(*flagExcludeFields, -1)
 	includeFields := commaSplitter.Split(*flagIncludeFields, -1)
 
+	ecsLenient := false
+	if cfgECSLenient, ok := cfg.GetBool("ecsLenient"); ok {
+		ecsLenient = cfgECSLenient
+	}
+
+	timestampShowDiff := true
+	if cfgTimestampShowDiff, ok := cfg.GetBool("timestampShowDiff"); ok {
+		timestampShowDiff = cfgTimestampShowDiff
+	}
+
 	r, err := ecslog.NewRenderer(
 		shouldColorize,
 		*flagColorScheme,
@@ -155,18 +165,18 @@ func main() {
 		maxLineLen,
 		excludeFields,
 		includeFields,
+		ecsLenient,
+		timestampShowDiff,
 	)
 	if err != nil {
 		printError(err.Error())
 		printUsage()
 		os.Exit(1)
 	}
-	// TODO: warn (err?) if flagLevel is an unknown level (per levelValFromName)
 	r.SetLevelFilter(*flagLevel)
 	err = r.SetKQLFilter(*flagKQL)
 	if err != nil {
 		printError("invalid KQL: " + err.Error())
-		// TODO: --help-kql option, then refer to it here
 		os.Exit(1)
 	}
 	r.SetStrictFilter(*flagStrict)
