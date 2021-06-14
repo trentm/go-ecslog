@@ -4,7 +4,6 @@
   - Note that with no log.level (allowable with ecsLenient, e.g. kibana 8.x
     current logs) the ':' sep in the title line is awkward.
 - review TODOs in the code
-- clear out all panic()s and probably lo?g.Fatal()s? Perhaps remove from 'lg' pkg
 
 # mvp
 

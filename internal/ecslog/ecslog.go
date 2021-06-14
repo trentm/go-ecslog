@@ -188,6 +188,36 @@ func LogLevelLess(level1, level2 string) bool {
 	return val1 < val2
 }
 
+// LevelNameOrderStr returns a string with all the known level names in order
+// in the format "trace < debug < ...".
+func LevelNameOrderStr() string {
+	type nv struct {
+		name string
+		val  int
+	}
+
+	var sorted []nv
+	for n, v := range levelValFromName {
+		sorted = append(sorted, nv{n, v})
+	}
+
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return sorted[i].val < sorted[j].val
+	})
+
+	var names []string
+	var currVal int
+	for _, nv := range sorted {
+		if nv.val == currVal && len(names) > 0 {
+			names[len(names)-1] = names[len(names)-1] + "/" + nv.name
+		} else {
+			names = append(names, nv.name)
+			currVal = nv.val
+		}
+	}
+	return strings.Join(names, " < ")
+}
+
 // isECSLoggingRecord returns true iff the given `rec` has the required
 // ecs-logging fields: @timestamp, ecs.version, and log.level (all
 // strings). If `message` is present, it must be a string.
