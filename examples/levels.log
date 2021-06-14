@@ -1,0 +1,10 @@
+{"log.level":"trace","@timestamp":"2021-06-13T00:00:00.010Z","ecs":{"version":"1.5.0"},"message":"trace level"}
+{"log.level":"debug","@timestamp":"2021-06-13T00:00:00.020Z","ecs":{"version":"1.5.0"},"message":"debug level"}
+{"log.level":"info","@timestamp":"2021-06-13T00:00:00.030Z","ecs":{"version":"1.5.0"},"message":"info level"}
+{"log.level":"deprecation","@timestamp":"2021-06-13T00:00:00.040Z","ecs":{"version":"1.5.0"},"message":"deprecation level (used by Elasticsearch)"}
+{"log.level":"warn","@timestamp":"2021-06-13T00:00:00.040Z","ecs":{"version":"1.5.0"},"message":"warn level"}
+{"log.level":"warning","@timestamp":"2021-06-13T00:00:00.040Z","ecs":{"version":"1.5.0"},"message":"warning level"}
+{"log.level":"error","@timestamp":"2021-06-13T00:00:00.050Z","ecs":{"version":"1.5.0"},"message":"error level"}
+{"log.level":"dpanic","@timestamp":"2021-06-13T00:00:00.060Z","ecs":{"version":"1.5.0"},"message":"dpanic level (used by zap)"}
+{"log.level":"panic","@timestamp":"2021-06-13T00:00:00.070Z","ecs":{"version":"1.5.0"},"message":"panic level (used by zap)"}
+{"log.level":"fatal","@timestamp":"2021-06-13T00:00:00.080Z","ecs":{"version":"1.5.0"},"message":"fatal level"}
