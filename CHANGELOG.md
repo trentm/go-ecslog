@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add a `-i, --include-fields FIELDS` flag for including only certain fields.
+  When given, *only* those extra fields are rendered in the output. Note that
+  `-i FIELDS` do not apply to the title line fields. While this sounds
+  incongruous with `-x FIELDS`, which *does* apply to title line fields, I
+  think it makes for more natural usage.
+  (by @jalvz, [#15](https://github.com/trentm/go-ecslog/pull/15))
+
 - Fix a bug where `format="..."` from the config file was not being read.
 
 - Add "DEPRECATION" level (with same sort order as WARN) found in elasticsearch

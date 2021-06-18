@@ -74,12 +74,15 @@ Some examples:
 Note that this is a subset of KQL and necessarily slightly adapted for use on log files without an Elasticsearch mapping for field types. See [internal/kqlog/README.md](./internal/kqlog/README.md) for details.
 
 
-## Exclude fields from rendering
+## Include/exclude fields from rendering
 
 Sometimes it can help to focus by eliding some distracting fields. Use `-x FIELD,FIELD,...`
 to exclude named fields from the rendered output.
 
 ![ecslog exclude fields](./docs/img/exclude-fields.png)
+
+Or use `-i FIELD,FIELD,...` to exclude all extra fields (those after the title
+line) **except** those given.
 
 
 ## `@timestamp` diff highlighting
