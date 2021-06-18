@@ -1,6 +1,6 @@
 # ecslog changelog
 
-## Unreleased
+## v0.5.0
 
 - Add a `-i, --include-fields FIELDS` flag for including only certain fields.
   When given, *only* those extra fields are rendered in the output. Note that
