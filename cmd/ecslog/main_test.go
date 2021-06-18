@@ -96,9 +96,16 @@ var mainTestCases = []mainTestCase{
 		regexp.MustCompile(`^\n    foo: "bar"\n    spam: "eggs"\n$`),
 		nil,
 	},
+	{
+		"ecslog --include-fields foo",
+		[]string{"ecslog", "-i", "foo", "./testdata/exclude-fields.log"},
+		0,
+		regexp.MustCompile(`^\[2021-01-19T22:51:12.142Z\]  INFO: hi\n    foo: "bar"\n$`),
+		nil,
+	},
 }
 
-func TestMain(t *testing.T) {
+func TestFlags(t *testing.T) {
 	for _, tc := range mainTestCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("-- `ecslog` test case %q\n", tc.name)

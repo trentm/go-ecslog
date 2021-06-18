@@ -31,6 +31,7 @@ type Renderer struct {
 	formatter         Formatter
 	maxLineLen        int
 	excludeFields     []string
+	includeFields     []string
 	ecsLenient        bool
 	timestampShowDiff bool
 	levelFilter       string
@@ -59,7 +60,7 @@ type Renderer struct {
 //   fields to exist.
 // - `timestampShowDiff` is a bool indicating if the @timestamp diff from the
 //   preceding log record should be styled.
-func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields []string, ecsLenient, timestampShowDiff bool) (*Renderer, error) {
+func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int, excludeFields, includeFields []string, ecsLenient, timestampShowDiff bool) (*Renderer, error) {
 	// Get appropriate "painter" for terminal coloring.
 	var painter *ansipainter.ANSIPainter
 	if shouldColorize == "auto" {
@@ -116,6 +117,7 @@ func NewRenderer(shouldColorize, colorScheme, formatName string, maxLineLen int,
 		formatter:         formatter,
 		maxLineLen:        maxLineLen,
 		excludeFields:     excludeFields,
+		includeFields:     includeFields,
 		ecsLenient:        ecsLenient,
 		timestampShowDiff: timestampShowDiff,
 

@@ -32,12 +32,16 @@ func (f *defaultFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 	//   fields as a HTTP request/response text representation
 	obj := rec.GetObject()
 	obj.Visit(func(k []byte, v *fastjson.Value) {
+		includeFields, ok := anyIsPrefix(r.includeFields, string(k))
+		if !ok {
+			return
+		}
 		b.WriteString("\n    ")
 		r.painter.Paint(b, "extraField")
 		b.Write(k)
 		r.painter.Reset(b)
 		b.WriteString(": ")
-		formatJSONValue(b, v, "    ", "    ", r.painter, false)
+		formatJSONValue(b, v, "    ", "    ", r.painter, false, includeFields)
 	})
 }
 
@@ -58,6 +62,10 @@ func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 	//   fields as a HTTP request/response text representation
 	obj := rec.GetObject()
 	obj.Visit(func(k []byte, v *fastjson.Value) {
+		includeFields, ok := anyIsPrefix(r.includeFields, string(k))
+		if !ok {
+			return
+		}
 		b.WriteString("\n    ")
 		r.painter.Paint(b, "extraField")
 		b.Write(k)
@@ -72,9 +80,9 @@ func (f *compactFormatter) formatRecord(r *Renderer, rec *fastjson.Value, b *str
 		vStr := v.String()
 		// 80 (quotable width) - 8 (indentation) - length of `k` - len(": ")
 		if len(vStr) < 80-8-len(k)-2 {
-			formatJSONValue(b, v, "    ", "    ", r.painter, true)
+			formatJSONValue(b, v, "    ", "    ", r.painter, true, includeFields)
 		} else {
-			formatJSONValue(b, v, "    ", "    ", r.painter, false)
+			formatJSONValue(b, v, "    ", "    ", r.painter, false, includeFields)
 		}
 	})
 }
@@ -294,7 +302,7 @@ func formatDefaultTitleLine(r *Renderer, rec *fastjson.Value, b *strings.Builder
 	}
 }
 
-func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent string, painter *ansipainter.ANSIPainter, compact bool) {
+func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent string, painter *ansipainter.ANSIPainter, compact bool, includeFields []string) {
 	var i uint
 
 	switch v.Type() {
@@ -303,6 +311,10 @@ func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 		obj := v.GetObject()
 		i = 0
 		obj.Visit(func(subk []byte, subv *fastjson.Value) {
+			nestedIncludeFields, ok := anyIsPrefix(includeFields, string(subk))
+			if !ok {
+				return
+			}
 			if i != 0 {
 				b.WriteByte(',')
 				if compact {
@@ -320,7 +332,7 @@ func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 			b.WriteByte('"')
 			painter.Reset(b)
 			b.WriteString(": ")
-			formatJSONValue(b, subv, currIndent+indent, indent, painter, compact)
+			formatJSONValue(b, subv, currIndent+indent, indent, painter, compact, nestedIncludeFields)
 			i++
 		})
 		if !compact {
@@ -342,7 +354,7 @@ func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 				b.WriteString(currIndent)
 				b.WriteString(indent)
 			}
-			formatJSONValue(b, subv, currIndent+indent, indent, painter, compact)
+			formatJSONValue(b, subv, currIndent+indent, indent, painter, compact, includeFields)
 		}
 		if !compact {
 			b.WriteByte('\n')
@@ -436,4 +448,30 @@ var formatterFromName = map[string]Formatter{
 	"ecs":     &ecsFormatter{},
 	"simple":  &simpleFormatter{},
 	"compact": &compactFormatter{},
+}
+
+// returns whether any of the include items is a prefix of key, along with the postfix (if any)
+func anyIsPrefix(includes []string, key string) ([]string, bool) {
+	if len(includes) == 0 || (len(includes) == 1 && includes[0] == "") {
+		return includes, true
+	}
+	subKeys := strings.Split(key, ".")
+	for _, include := range includes {
+		match := true
+		includeSubKeys := strings.Split(include, ".")
+		for i, subKey := range subKeys {
+			if len(includeSubKeys) > i && includeSubKeys[i] != subKey {
+				match = false
+				break
+			}
+		}
+		if match {
+			if len(includeSubKeys) > len(subKeys) {
+				// we didn't match the whole key, return the reminder to match in the next recursion step
+				return []string{strings.Join(includeSubKeys[len(subKeys):], ".")}, true
+			}
+			return []string{}, true
+		}
+	}
+	return includes, false
 }
