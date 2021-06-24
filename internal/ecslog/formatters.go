@@ -335,7 +335,7 @@ func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 			formatJSONValue(b, subv, currIndent+indent, indent, painter, compact, nestedIncludeFields)
 			i++
 		})
-		if !compact {
+		if !compact && i != 0 {
 			b.WriteByte('\n')
 			b.WriteString(currIndent)
 		}
@@ -356,7 +356,7 @@ func formatJSONValue(b *strings.Builder, v *fastjson.Value, currIndent, indent s
 			}
 			formatJSONValue(b, subv, currIndent+indent, indent, painter, compact, includeFields)
 		}
-		if !compact {
+		if !compact && len(v.GetArray()) != 0 {
 			b.WriteByte('\n')
 			b.WriteString(currIndent)
 		}
