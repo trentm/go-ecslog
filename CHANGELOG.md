@@ -1,5 +1,11 @@
 # ecslog changelog
 
+## Unreleased
+
+- Make rendering of empty arrays and objects in the extra fields more compact.
+  They are now rendered as "[]" and "{}" rather than "[\n]" and "{\n}".
+  ([#27](https://github.com/trentm/go-ecslog/pull/27))
+
 ## v0.5.0
 
 - Add a `-i, --include-fields FIELDS` flag for including only certain fields.
