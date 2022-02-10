@@ -1,6 +1,6 @@
 # ecslog changelog
 
-## Unreleased
+## v0.6.0
 
 - Make rendering of empty arrays and objects in the extra fields more compact.
   They are now rendered as "[]" and "{}" rather than "[\n]" and "{\n}".
